@@ -1,0 +1,118 @@
+<div class="bg-white rounded-lg shadow-md flex flex-col">
+
+  <!-- Filters Bar -->
+  <div class="px-3 py-2 border-b flex flex-col md:flex-row items-center gap-2 bg-gray-50 rounded-t-lg">
+    <div class="relative w-full md:flex-1">
+      <span class="absolute inset-y-0 left-0 flex items-center pl-2.5">
+        <span class="material-symbols-outlined text-base text-gray-400">search</span>
+      </span>
+      <input
+        type="text"
+        placeholder="Search logs..."
+        [(ngModel)]="searchTerm"
+        (ngModelChange)="onSearchChange()"
+        class="w-full pl-8 pr-3 py-1.5 text-xs bg-white text-gray-900 border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-gold/50 outline-none"
+      />
+    </div>
+
+    <select [(ngModel)]="selectedRole" (ngModelChange)="onFilterChange()"
+            class="w-full md:w-44 bg-white text-gray-900 border border-gray-300 rounded-lg py-1.5 px-3 text-xs focus:outline-none focus:ring-2 focus:ring-gold/50">
+      <option value="">All Roles</option>
+      <option value="Admin">Admin</option>
+      <option value="Doctor">Doctor</option>
+      <option value="Student">Student</option>
+      <option value="Receptionist">Receptionist</option>
+      <option value="LabTechnician">Lab Technician</option>
+      <option value="DentalAssistant">Dental Assistant</option>
+      <option value="InventoryManager">Inventory Manager</option>
+    </select>
+
+    <select [(ngModel)]="selectedAction" (ngModelChange)="onFilterChange()"
+            class="w-full md:w-40 bg-white text-gray-900 border border-gray-300 rounded-lg py-1.5 px-3 text-xs focus:outline-none focus:ring-2 focus:ring-gold/50">
+      <option value="">All Actions</option>
+      <option value="Create">Create</option>
+      <option value="Update">Update</option>
+      <option value="Delete">Delete</option>
+      <option value="Login">Login</option>
+    </select>
+
+    <div class="w-full md:w-44">
+      <input type="date" [(ngModel)]="selectedDate" (ngModelChange)="onFilterChange()"
+             class="bg-white text-gray-900 border border-gray-300 rounded-lg py-1.5 px-3 text-xs w-full focus:outline-none focus:ring-2 focus:ring-gold/50" />
+    </div>
+  </div>
+
+  <!-- Log Entries -->
+  <div class="px-3 py-2 space-y-1.5 overflow-y-auto max-h-[calc(100vh-13rem)]">
+
+    <!-- Loading spinner -->
+    <div *ngIf="loading" class="flex justify-center items-center py-8">
+      <span class="material-symbols-outlined text-gray-400 text-3xl" style="animation: spin 1s linear infinite">progress_activity</span>
+    </div>
+
+    <!-- Empty state -->
+    <div *ngIf="!loading && logs.length === 0" class="flex flex-col items-center justify-center py-8 text-gray-400">
+      <span class="material-symbols-outlined text-4xl mb-1">history</span>
+      <p class="text-xs">No audit logs found.</p>
+    </div>
+
+    <!-- Log rows -->
+    <div *ngFor="let log of logs"
+         class="flex items-start gap-3 border border-gray-100 px-3 py-2 rounded-lg hover:bg-gray-50 transition-colors">
+      <div class="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0"
+           [ngClass]="[log.iconBg, log.iconText]">
+        <span class="material-symbols-outlined text-base">{{ log.icon }}</span>
+      </div>
+      <div class="flex-1 min-w-0">
+        <p class="text-gray-800 text-xs">
+          <span class="font-semibold">{{ log.userEmail }}</span>
+          <span class="ml-1 text-gray-400">({{ log.role }})</span>
+          — {{ log.description }}
+        </p>
+        <p *ngIf="log.details" class="text-xs text-gray-500 mt-0.5 truncate">{{ log.details }}</p>
+        <div class="flex items-center gap-2 mt-0.5 flex-wrap">
+          <span class="text-xs text-gray-400">{{ log.timestamp }}</span>
+          <span class="text-xs px-1.5 py-0.5 rounded-full font-medium"
+                [ngClass]="log.status === 'Success' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'">
+            {{ log.status }}
+          </span>
+          <span *ngIf="log.patientId" class="text-xs text-gray-400">Patient #{{ log.patientId }}</span>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Pagination -->
+  <div class="flex items-center justify-between px-4 py-1.5 border-t text-xs text-gray-600">
+    <div class="flex items-center gap-2">
+      <span class="text-gray-500">Rows:</span>
+      <select
+        [ngModel]="limit"
+        (ngModelChange)="onPageSizeChange($event)"
+        class="border border-gray-300 rounded px-2 py-1 text-sm bg-white outline-none focus:ring-2 focus:ring-gold/50"
+      >
+        <option *ngFor="let s of pageSizeOptions" [value]="s">{{ s }}</option>
+      </select>
+    </div>
+    <div class="flex items-center gap-1">
+      <span class="text-gray-500 text-xs">{{ pageRangeStart }}–{{ pageRangeEnd }} of {{ total }}</span>
+      <button
+        (click)="goToPage(page - 1)"
+        [disabled]="page <= 1"
+        class="p-1 rounded hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed"
+      >
+        <span class="material-symbols-outlined text-base leading-none">chevron_left</span>
+      </button>
+      <span class="font-medium text-xs">{{ page }} / {{ totalPages }}</span>
+      <button
+        (click)="goToPage(page + 1)"
+        [disabled]="page >= totalPages"
+        class="p-1 rounded hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed"
+      >
+        <span class="material-symbols-outlined text-base leading-none">chevron_right</span>
+      </button>
+    </div>
+  </div>
+
+</div>

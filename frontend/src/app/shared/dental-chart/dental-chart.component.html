@@ -1,0 +1,185 @@
+<div class="dental-chart-section">
+
+    <!-- ── Legend ─────────────────────────────────────────────────── -->
+    <div class="legend">
+      <div
+        *ngFor="let c of conditions"
+        class="leg"
+        [class.selected]="c.id === 'healthy'"
+        [class.leg-readonly]="c.id !== 'healthy'">
+        <div class="leg-dot" [ngClass]="c.id"></div>
+        {{ c.label }}
+      </div>
+    </div>
+
+    <!-- ── Tooth Grid ─────────────────────────────────────────────── -->
+    <div class="chart-grid">
+
+      <!-- Upper row -->
+      <div class="jaw-row">
+        <div class="quadrant">
+          <div
+            *ngFor="let t of quadrants.upperLeft"
+            class="tooth"
+            [ngClass]="getConditionClasses(t)"
+            (click)="openModal(t)">
+            <span>{{ t }}</span>
+            <div class="pip"></div>
+          </div>
+        </div>
+        <div class="div-v">|</div>
+        <div class="quadrant">
+          <div
+            *ngFor="let t of quadrants.upperRight"
+            class="tooth"
+            [ngClass]="getConditionClasses(t)"
+            (click)="openModal(t)">
+            <span>{{ t }}</span>
+            <div class="pip"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="div-h"></div>
+
+      <!-- Lower row -->
+      <div class="jaw-row">
+        <div class="quadrant">
+          <div
+            *ngFor="let t of quadrants.lowerLeft"
+            class="tooth"
+            [ngClass]="getConditionClasses(t)"
+            (click)="openModal(t)">
+            <span>{{ t }}</span>
+            <div class="pip"></div>
+          </div>
+        </div>
+        <div class="div-v">|</div>
+        <div class="quadrant">
+          <div
+            *ngFor="let t of quadrants.lowerRight"
+            class="tooth"
+            [ngClass]="getConditionClasses(t)"
+            (click)="openModal(t)">
+            <span>{{ t }}</span>
+            <div class="pip"></div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ── Summary ────────────────────────────────────────────────── -->
+    <div class="summary" [class.visible]="annotatedCount > 0">
+      <div class="sum-title">Annotated teeth</div>
+      <div class="sum-list">
+        <div
+          *ngFor="let entry of annotatedTeeth"
+          class="sum-item"
+          [ngClass]="entry.record.condition"
+          (click)="openModal(entry.tooth)">
+
+          <!-- normal row -->
+          <ng-container *ngIf="deleteToothConfirm !== entry.tooth">
+            <div class="si-row">
+              <span class="si-num">Tooth {{ entry.tooth }}</span>
+              <div class="si-actions">
+                <span class="si-badge" [ngClass]="entry.record.condition">{{ capitalize(entry.record.condition) }}</span>
+                <button *ngIf="isWriteMode" class="si-trash" (click)="confirmDelete(entry.tooth, $event)" title="Delete note">
+                  <span class="material-symbols-outlined">delete</span>
+                </button>
+              </div>
+            </div>
+            <div class="si-note">{{ entry.record.note }}</div>
+            <div class="si-time">{{ entry.record.savedAt }}</div>
+          </ng-container>
+
+          <!-- confirm delete row -->
+          <ng-container *ngIf="deleteToothConfirm === entry.tooth">
+            <div class="si-confirm" (click)="$event.stopPropagation()">
+              <span class="si-confirm-msg">Delete note for Tooth {{ entry.tooth }}?</span>
+              <div class="si-confirm-actions">
+                <button class="btn-confirm-cancel" (click)="cancelDelete(); $event.stopPropagation()">Cancel</button>
+                <button class="btn-confirm-delete" (click)="executeDelete(); $event.stopPropagation()">Delete</button>
+              </div>
+            </div>
+          </ng-container>
+
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+<!-- ── Modal Overlay ───────────────────────────────────────────────── -->
+<div class="overlay" [class.open]="modalOpen" (click)="onOverlayClick($event)">
+  <div class="modal">
+
+    <div class="mhd">
+      <div>
+        <div class="m-lbl">Tooth</div>
+        <div class="m-num">{{ activeTooth ?? '—' }}</div>
+      </div>
+      <button class="m-x" (click)="closeModal()">×</button>
+    </div>
+
+    <!-- Condition pills — write mode only -->
+    <ng-container *ngIf="isWriteMode">
+      <label class="flbl">Condition</label>
+      <div class="pills">
+        <div
+          *ngFor="let c of conditions"
+          class="pill"
+          [ngClass]="selectedCondition === c.id ? ['active', c.id] : []"
+          (click)="selectedCondition = c.id">
+          {{ c.label }}
+        </div>
+      </div>
+    </ng-container>
+
+    <!-- Read-only condition badge -->
+    <ng-container *ngIf="!isWriteMode">
+      <label class="flbl">Condition</label>
+      <div class="readonly-badge-wrap">
+        <span class="si-badge" [ngClass]="activeTooth !== null && db[activeTooth] ? db[$any(activeTooth)].condition : 'healthy'">
+          {{ activeTooth !== null && db[activeTooth] ? capitalize(db[$any(activeTooth)].condition) : 'Healthy' }}
+        </span>
+      </div>
+    </ng-container>
+
+    <!-- Diagnosis notes — write mode only -->
+    <ng-container *ngIf="isWriteMode">
+      <label class="flbl">Diagnosis notes</label>
+      <textarea rows="4" placeholder="Enter clinical findings…" [(ngModel)]="noteText"></textarea>
+
+      <div class="saved-at">
+        <ng-container *ngIf="activeTooth !== null && db[activeTooth]">
+          Last saved: {{ db[$any(activeTooth)].savedAt }}
+        </ng-container>
+      </div>
+
+      <!-- Draft warning banner in modal (write mode only) -->
+      <div class="modal-draft-notice">
+        <span class="material-symbols-outlined" style="font-size:15px;flex-shrink:0">info</span>
+        Saving here stores a local draft. Submit via Procedure Notes to send for supervisor review.
+      </div>
+    </ng-container>
+
+    <!-- Read-only note display -->
+    <ng-container *ngIf="!isWriteMode">
+      <label class="flbl">Diagnosis notes</label>
+      <div class="readonly-note">
+        <p *ngIf="activeTooth !== null && db[activeTooth]?.note">{{ db[$any(activeTooth)].note }}</p>
+        <p *ngIf="!(activeTooth !== null && db[activeTooth]?.note)" class="no-note">No diagnosis recorded.</p>
+      </div>
+    </ng-container>
+
+    <div class="mactions">
+      <button class="btn btn-cancel" (click)="closeModal()">
+        {{ isWriteMode ? 'Cancel' : 'Close' }}
+      </button>
+      <button *ngIf="isWriteMode" class="btn btn-save" (click)="saveModal()">Save diagnosis</button>
+    </div>
+
+  </div>
+</div>

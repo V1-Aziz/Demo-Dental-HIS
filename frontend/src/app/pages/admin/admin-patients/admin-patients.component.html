@@ -1,0 +1,167 @@
+<!-- Patient Detail View -->
+<ng-container *ngIf="selectedPatient; else listView">
+  <div class="space-y-6">
+
+    <button (click)="selectedPatient = null"
+            class="flex items-center text-sm text-gray-500 hover:text-royal transition-colors">
+      <span class="material-symbols-outlined text-base mr-1">arrow_back</span> Back to List
+    </button>
+
+    <!-- Header Card -->
+    <div class="bg-white rounded-lg shadow-sm p-6 border-l-4 border-royal">
+      <div class="flex justify-between items-start">
+        <div>
+          <h1 class="text-2xl font-bold text-royal">{{ selectedPatient.name }}</h1>
+          <p class="text-gray-500">File No: {{ selectedPatient.fileNo }}</p>
+        </div>
+      </div>
+
+      <div *ngIf="selectedPatient.allergy !== 'None'"
+           class="mt-4 bg-red-50 text-red-700 px-4 py-3 rounded-lg flex items-center border border-red-200">
+        <span class="material-symbols-outlined text-xl mr-3">warning</span>
+        <p class="text-sm font-bold">Medical Alert: {{ selectedPatient.allergy }}</p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mt-6 pt-6 border-t text-sm">
+        <div><span class="text-gray-500 block uppercase font-bold text-[10px]">Phone Number</span>{{ selectedPatient.phone }}</div>
+        <div><span class="text-gray-500 block uppercase font-bold text-[10px]">Nationality</span>{{ selectedPatient.nationality }}</div>
+        <div><span class="text-gray-500 block uppercase font-bold text-[10px]">Civil ID</span>{{ selectedPatient.civil }}</div>
+        <div><span class="text-gray-500 block uppercase font-bold text-[10px]">Registration</span>{{ selectedPatient.registration }}</div>
+      </div>
+    </div>
+
+    <!-- Tabs -->
+    <div class="bg-white rounded-lg shadow-md overflow-hidden">
+      <div class="flex border-b overflow-x-auto bg-gray-50">
+        <button *ngFor="let tab of tabs"
+                (click)="activeTab = tabId(tab)"
+                [class]="'flex-1 py-4 px-6 text-sm font-bold whitespace-nowrap transition-colors ' + (activeTab === tabId(tab) ? 'text-royal border-b-4 border-gold bg-white' : 'text-gray-500 hover:bg-gray-100')">
+          {{ tab }}
+        </button>
+      </div>
+
+      <div class="p-8 min-h-[300px]">
+
+        <div *ngIf="activeTab === 'overview'">
+          <p class="text-gray-700 leading-relaxed">Initial screening conducted on Oct 1, 2025. Patient presents with mild discomfort in the upper-right quadrant. No visible signs of decay, but recommends a follow-up X-ray to investigate further. Vital signs are stable.</p>
+        </div>
+
+        <div *ngIf="activeTab === 'odontogram'" class="flex flex-col items-center">
+          <div class="flex flex-wrap gap-4 mb-8 justify-center bg-gray-50 p-4 rounded-lg">
+            <button *ngFor="let tool of odontogramTools"
+                    (click)="odontogramTool = tool.id"
+                    [class]="'flex items-center px-3 py-1.5 rounded-full text-xs font-medium border-2 transition-all ' + (odontogramTool === tool.id ? 'border-royal ring-2 ring-royal/20' : 'border-transparent')">
+              <div [class]="'w-4 h-4 rounded mr-2 ' + tool.color + ' shadow-sm'"></div>
+              <span class="capitalize">{{ tool.id }}</span>
+            </button>
+          </div>
+          <div class="space-y-4">
+            <div class="flex gap-8 justify-center">
+              <div class="flex gap-1">
+                <button *ngFor="let id of upperLeft" (click)="clickTooth(id)"
+                        [class]="'w-10 h-10 border rounded flex items-center justify-center text-xs transition-colors ' + toothClass(id)">{{ id }}</button>
+              </div>
+              <div class="flex gap-1">
+                <button *ngFor="let id of upperRight" (click)="clickTooth(id)"
+                        [class]="'w-10 h-10 border rounded flex items-center justify-center text-xs transition-colors ' + toothClass(id)">{{ id }}</button>
+              </div>
+            </div>
+            <div class="flex gap-8 justify-center">
+              <div class="flex gap-1">
+                <button *ngFor="let id of lowerLeft" (click)="clickTooth(id)"
+                        [class]="'w-10 h-10 border rounded flex items-center justify-center text-xs transition-colors ' + toothClass(id)">{{ id }}</button>
+              </div>
+              <div class="flex gap-1">
+                <button *ngFor="let id of lowerRight" (click)="clickTooth(id)"
+                        [class]="'w-10 h-10 border rounded flex items-center justify-center text-xs transition-colors ' + toothClass(id)">{{ id }}</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div *ngIf="activeTab === 'medicalhistory' || activeTab === 'treatmentplan' || activeTab === 'images'"
+             class="text-center py-12 text-gray-500">
+          Content for this tab will be available once connected to the backend.
+        </div>
+
+      </div>
+    </div>
+  </div>
+</ng-container>
+
+<!-- Patient List View -->
+<ng-template #listView>
+  <div class="space-y-4">
+
+    <!-- Action Bar -->
+    <div class="flex flex-col md:flex-row items-center gap-4">
+      <div class="relative w-full md:flex-1">
+        <span class="absolute inset-y-0 left-0 flex items-center pl-3">
+          <span class="material-symbols-outlined text-xl text-gray-400">search</span>
+        </span>
+        <input type="text" placeholder="Search by Patient Name or File No..."
+               [(ngModel)]="searchTerm" (input)="onSearchChange()"
+               class="w-full pl-10 pr-4 py-2 bg-white text-gray-900 border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-gold/50 outline-none" />
+      </div>
+      <button class="w-full md:flex-1 bg-gray-100 text-gray-700 font-bold py-2 px-6 rounded-lg flex items-center justify-center gap-2 hover:bg-gray-200 transition-colors border">
+        <span class="material-symbols-outlined text-xl">filter_list</span> Filter
+      </button>
+      <button class="w-full md:flex-1 bg-royal text-white font-bold py-2 px-6 rounded-lg flex items-center justify-center gap-2 hover:bg-[#2c5282] transition-all">
+        <span class="material-symbols-outlined text-xl">add</span> Add Patient
+      </button>
+    </div>
+
+    <!-- Table Card -->
+    <div class="bg-white rounded-lg shadow-md overflow-hidden">
+    <div class="overflow-x-auto">
+      <table class="min-w-full divide-y divide-gray-200">
+        <thead class="bg-gray-50">
+          <tr>
+            <th class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Patient Name</th>
+            <th class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">File No</th>
+            <th class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Phone</th>
+            <th class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Gender</th>
+            <th class="px-6 py-4"></th>
+          </tr>
+        </thead>
+        <tbody class="bg-white divide-y divide-gray-200">
+          <tr *ngFor="let patient of patients" class="hover:bg-gray-50">
+            <td class="px-6 py-4 whitespace-nowrap font-medium text-gray-900">{{ patient.name }}</td>
+            <td class="px-6 py-4 whitespace-nowrap text-gray-600">{{ patient.fileNo }}</td>
+            <td class="px-6 py-4 whitespace-nowrap text-gray-600">{{ patient.phone }}</td>
+            <td class="px-6 py-4 whitespace-nowrap text-gray-600">{{ patient.gender === 'M' ? 'Male' : 'Female' }}</td>
+            <td class="px-6 py-4 text-right">
+              <a [routerLink]="[patient.id]"
+                 class="inline-block bg-royal text-white text-xs font-bold py-1.5 px-5 rounded hover:bg-[#2c5282] transition-colors">
+                Open File
+              </a>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <!-- Pagination bar -->
+    <div class="flex items-center justify-between px-4 py-1.5 border-t text-xs text-gray-600">
+      <div class="flex items-center gap-2">
+        <span class="text-gray-500">Rows:</span>
+        <select [ngModel]="pageSize" (ngModelChange)="onPageSizeChange($event)"
+                class="border border-gray-300 rounded px-2 py-1 text-sm bg-white outline-none focus:ring-2 focus:ring-gold/50">
+          <option *ngFor="let s of pageSizeOptions" [value]="s">{{ s }}</option>
+        </select>
+      </div>
+      <div class="flex items-center gap-1">
+        <span class="text-gray-500 text-xs">{{ pageRangeStart }}–{{ pageRangeEnd }} of {{ totalPatients }}</span>
+        <button (click)="goToPage(currentPage - 1)" [disabled]="currentPage <= 1"
+                class="p-1 rounded hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed">
+          <span class="material-symbols-outlined text-base leading-none">chevron_left</span>
+        </button>
+        <span class="font-medium text-xs">{{ currentPage }} / {{ totalPages }}</span>
+        <button (click)="goToPage(currentPage + 1)" [disabled]="currentPage >= totalPages"
+                class="p-1 rounded hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed">
+          <span class="material-symbols-outlined text-base leading-none">chevron_right</span>
+        </button>
+      </div>
+    </div>
+    </div>
+  </div>
+</ng-template>

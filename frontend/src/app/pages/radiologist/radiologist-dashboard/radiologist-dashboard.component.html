@@ -1,0 +1,83 @@
+<div *ngIf="loading" class="flex items-center justify-center h-48 text-gray-400">
+  <span class="material-symbols-outlined animate-spin text-3xl mr-2">progress_activity</span>
+  Loading dashboard…
+</div>
+
+<div *ngIf="error" class="bg-red-50 border border-red-200 text-red-700 rounded-lg p-4 mb-4">{{ error }}</div>
+
+<ng-container *ngIf="!loading && summary">
+
+  <!-- Info cards -->
+  <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+
+    <div class="bg-white rounded-xl shadow-sm p-5 flex items-center gap-4">
+      <div class="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center">
+        <span class="material-symbols-outlined text-blue-600 text-2xl">scan</span>
+      </div>
+      <div>
+        <p class="text-2xl font-bold text-gray-800">{{ summary.cards.patientsNeedingScreeningToday }}</p>
+        <p class="text-sm text-gray-500">Patients needing screening today</p>
+      </div>
+    </div>
+
+    <div class="bg-white rounded-xl shadow-sm p-5 flex items-center gap-4">
+      <div class="w-12 h-12 rounded-full bg-green-100 flex items-center justify-center">
+        <span class="material-symbols-outlined text-green-600 text-2xl">image</span>
+      </div>
+      <div>
+        <p class="text-2xl font-bold text-gray-800">{{ summary.cards.screeningsUploadedToday }}</p>
+        <p class="text-sm text-gray-500">Screenings I uploaded today</p>
+      </div>
+    </div>
+
+    <div class="bg-white rounded-xl shadow-sm p-5 flex items-center gap-4">
+      <div class="w-12 h-12 rounded-full bg-amber-100 flex items-center justify-center">
+        <span class="material-symbols-outlined text-amber-600 text-2xl">calendar_today</span>
+      </div>
+      <div>
+        <p class="text-2xl font-bold text-gray-800">{{ summary.cards.patientsScheduledToday }}</p>
+        <p class="text-sm text-gray-500">Patients scheduled today</p>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Pending requests table -->
+  <div class="bg-white rounded-xl shadow-sm overflow-hidden">
+    <div class="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
+      <h3 class="font-semibold text-gray-800">Patients waiting for screening</h3>
+      <span class="text-xs text-gray-400">Showing up to 5 most recent</span>
+    </div>
+
+    <div *ngIf="summary.topPending.length === 0"
+         class="flex flex-col items-center justify-center py-12 text-gray-400 gap-2">
+      <span class="material-symbols-outlined text-4xl">scan</span>
+      <p class="text-sm font-medium">No screening requests assigned to you right now</p>
+    </div>
+
+    <table *ngIf="summary.topPending.length > 0" class="w-full text-sm">
+      <thead class="bg-gray-50 text-gray-600 text-xs uppercase tracking-wide">
+        <tr>
+          <th class="text-left px-5 py-3">Patient</th>
+          <th class="text-left px-5 py-3">Appt. time</th>
+          <th class="text-left px-5 py-3">Doctor</th>
+          <th class="text-left px-5 py-3">Requested</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let row of summary.topPending"
+            (click)="openPatient(row.patient_id)"
+            class="border-t border-gray-50 hover:bg-blue-50 cursor-pointer transition-colors">
+          <td class="px-5 py-3 font-medium text-royal">{{ row.patient_full_name }}</td>
+          <td class="px-5 py-3 text-gray-600">
+            {{ formatTime(row.appointment_start_time) }}
+            <span class="ml-1 text-xs text-gray-400">{{ row.appointment_status }}</span>
+          </td>
+          <td class="px-5 py-3 text-gray-600">{{ row.doctor_full_name }}</td>
+          <td class="px-5 py-3 text-gray-500">{{ formatDate(row.requested_at) }}</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+</ng-container>

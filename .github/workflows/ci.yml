@@ -1,0 +1,72 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  frontend:
+    name: Frontend build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+      - run: npm run build
+
+  backend:
+    name: Backend build, database and API smoke test
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    services:
+      sqlserver:
+        image: mcr.microsoft.com/mssql/server:2022-latest
+        env:
+          ACCEPT_EULA: Y
+          MSSQL_SA_PASSWORD: DentalHis_2024
+        ports:
+          - 1433:1433
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm run build
+      - run: cp .env.example .env
+
+      - name: Wait for SQL Server
+        run: |
+          for i in $(seq 1 30); do
+            node -e "require('mssql').connect({server:'localhost',user:'sa',password:'DentalHis_2024',options:{encrypt:false,trustServerCertificate:true}}).then(p => p.close()).then(() => process.exit(0), () => process.exit(1))" && exit 0
+            sleep 5
+          done
+          echo "SQL Server did not start in time" && exit 1
+
+      - name: Create and seed the database
+        run: npm run db:reset
+
+      - name: Start the API and call every read endpoint as each demo user
+        run: |
+          node dist/server.js > api.log 2>&1 &
+          for i in $(seq 1 30); do
+            curl -s -o /dev/null http://localhost:3000/api/auth/registerable-roles && break
+            sleep 1
+          done
+          npm run smoke
+
+      - name: API log
+        if: always()
+        run: cat api.log || true

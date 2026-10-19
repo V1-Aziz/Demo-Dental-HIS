@@ -1,0 +1,102 @@
+<div class="space-y-6">
+
+  <!-- Header row -->
+  <div class="flex items-center justify-between">
+    <button (click)="goBack()"
+            class="flex items-center gap-1 text-sm text-royal hover:text-gold transition-colors">
+      <span class="material-symbols-outlined text-base leading-none">arrow_back</span>
+      Back to Reports Menu
+    </button>
+    <button (click)="exportOpen = true"
+            class="flex items-center gap-1.5 bg-royal text-white border border-royal rounded-lg px-3 py-1.5 text-sm font-semibold hover:bg-royal/90 transition-colors">
+      <span class="material-symbols-outlined text-base leading-none">download</span>
+      Export
+    </button>
+  </div>
+
+  <app-export-modal
+    [open]="exportOpen"
+    [reportKey]="reportKey"
+    [contextSubtitle]="exportSubtitle"
+    [filters]="exportFilters"
+    (closed)="exportOpen = false">
+  </app-export-modal>
+
+  <!-- Title -->
+  <div>
+    <h2 class="text-2xl font-bold text-gray-800">Clinic Occupancy</h2>
+    <p class="text-sm text-gray-500 mt-0.5">Percentage of time slots filled per clinic</p>
+  </div>
+
+  <!-- Filter row -->
+  <div class="flex items-center gap-3">
+    <label class="text-sm font-medium text-gray-600">Period:</label>
+    <select [(ngModel)]="selectedPeriod" (ngModelChange)="onPeriodChange()"
+            class="border border-gray-300 rounded-lg py-1.5 px-3 text-sm text-gray-700 bg-white focus:outline-none focus:ring-2 focus:ring-gold/50">
+      <option *ngFor="let opt of periodOptions" [value]="opt.value">{{ opt.label }}</option>
+    </select>
+  </div>
+
+  <!-- Loading / error -->
+  <div *ngIf="isLoading" class="flex items-center justify-center h-32 text-sm text-gray-400">
+    <span class="material-symbols-outlined animate-spin text-lg mr-2">progress_activity</span>
+    Loading…
+  </div>
+  <div *ngIf="hasError && !isLoading" class="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-4 py-3">
+    Failed to load data. Please try again.
+  </div>
+
+  <ng-container *ngIf="!isLoading && !hasError">
+
+    <!-- Metric cards -->
+    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+
+      <div class="bg-slate-50 border border-gray-200 rounded-lg p-5">
+        <p class="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1">Overall Occupancy</p>
+        <p class="text-3xl font-bold text-gray-800">{{ overallOccupancy | number:'1.0-1' }}%</p>
+      </div>
+
+      <div class="bg-slate-50 border border-gray-200 rounded-lg p-5">
+        <p class="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1">Most Utilized</p>
+        <ng-container *ngIf="mostUtilized; else emDash1">
+          <p class="text-xl font-bold text-gray-800">{{ mostUtilized.name }}</p>
+          <p class="text-sm text-gray-500 mt-0.5">{{ mostUtilized.pct | number:'1.0-1' }}%</p>
+        </ng-container>
+        <ng-template #emDash1>
+          <p class="text-xl font-bold text-gray-400">&mdash;</p>
+        </ng-template>
+      </div>
+
+      <div class="bg-slate-50 border border-gray-200 rounded-lg p-5">
+        <p class="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1">Least Utilized</p>
+        <ng-container *ngIf="leastUtilized; else emDash2">
+          <p class="text-xl font-bold text-gray-800">{{ leastUtilized.name }}</p>
+          <p class="text-sm text-gray-500 mt-0.5">{{ leastUtilized.pct | number:'1.0-1' }}%</p>
+        </ng-container>
+        <ng-template #emDash2>
+          <p class="text-xl font-bold text-gray-400">&mdash;</p>
+        </ng-template>
+      </div>
+
+    </div>
+
+    <!-- Chart -->
+    <div class="bg-white border border-gray-200 rounded-lg p-5 shadow-sm">
+      <h3 class="text-sm font-semibold text-gray-600 mb-4 uppercase tracking-wide">Occupancy by Clinic</h3>
+      <p *ngIf="clinics.length === 0" class="flex items-center justify-center h-48 text-sm text-gray-400">
+        No clinics to display.
+      </p>
+      <div [style.display]="clinics.length === 0 ? 'none' : 'block'"
+           [style.height.px]="chartHeight" style="position:relative">
+        <canvas #barChart></canvas>
+      </div>
+    </div>
+
+    <!-- Note -->
+    <div class="text-xs text-gray-400 border-t pt-3">
+      Occupancy = booked slots / available slots. Helps redistribute patient load across underutilized clinics.
+    </div>
+
+  </ng-container>
+
+</div>

@@ -1,0 +1,85 @@
+<!-- Loading -->
+<div *ngIf="loading" class="flex items-center justify-center py-20 text-gray-400 text-sm">
+  Loading grades…
+</div>
+
+<div *ngIf="!loading">
+
+  <!-- Summary card -->
+  <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 mb-6">
+    <div class="flex flex-col sm:flex-row items-start sm:items-center gap-6">
+
+      <!-- Average grade badge -->
+      <div class="flex-shrink-0 text-center rounded-xl border px-8 py-4 min-w-[120px]"
+           [style.background]="avgColors().bg"
+           [style.color]="avgColors().text"
+           [style.border-color]="avgColors().border">
+        <p class="text-5xl font-bold leading-none">{{ averageGrade !== null ? averageGrade : '—' }}</p>
+        <p class="text-sm mt-1 opacity-80">/ 10 avg</p>
+      </div>
+
+      <!-- Stats -->
+      <div class="flex gap-8">
+        <div class="text-center">
+          <p class="text-3xl font-bold text-royal">{{ grades.length }}</p>
+          <p class="text-sm text-gray-500 mt-1">Graded Cases</p>
+        </div>
+        <div class="text-center">
+          <p class="text-3xl font-bold text-amber-500">{{ ungradedApprovedCount }}</p>
+          <p class="text-sm text-gray-500 mt-1">Pending Grade</p>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Empty state -->
+  <div *ngIf="grades.length === 0"
+       class="bg-white rounded-xl shadow-sm border border-gray-100 flex flex-col items-center justify-center py-16 text-center px-6">
+    <span class="material-symbols-outlined text-5xl text-gray-300 mb-4">grade</span>
+    <p class="text-gray-500 font-medium">No grades yet.</p>
+    <p class="text-sm text-gray-400 mt-1">Your supervisor has not graded any of your submissions yet.</p>
+  </div>
+
+  <!-- Grades list -->
+  <div *ngIf="grades.length > 0" class="space-y-3">
+    <div *ngFor="let rec of grades"
+         class="bg-white rounded-xl shadow-sm border border-gray-100 px-5 py-4">
+      <div class="flex items-start justify-between gap-4">
+
+        <!-- Left: info -->
+        <div class="min-w-0 flex-1">
+          <div class="flex items-center gap-2 flex-wrap">
+            <p class="font-bold text-gray-900 text-sm">{{ rec.procedure_label }}</p>
+            <span [class]="'px-2 py-0.5 rounded-full text-xs font-semibold ' + typeClass(rec.submission_type)">
+              {{ rec.submission_type }}
+            </span>
+          </div>
+          <p class="text-xs text-gray-500 mt-1">
+            {{ rec.patient_name }}
+            · File #{{ rec.patient_file_no }}
+            · Submitted {{ formatDate(rec.submitted_at) }}
+          </p>
+          <p class="text-xs text-gray-400 mt-0.5">
+            Graded {{ formatDate(rec.graded_at) }}
+          </p>
+          <p *ngIf="rec.feedback_note"
+             class="text-xs text-gray-500 italic mt-1.5">
+            "{{ rec.feedback_note }}"
+          </p>
+        </div>
+
+        <!-- Right: grade badge -->
+        <div class="flex-shrink-0 text-center rounded-lg border px-4 py-2 min-w-[60px]"
+             [style.background]="gradeColors(rec.grade).bg"
+             [style.color]="gradeColors(rec.grade).text"
+             [style.border-color]="gradeColors(rec.grade).border">
+          <p class="text-xl font-bold leading-none">{{ rec.grade }}</p>
+          <p class="text-[10px] mt-0.5 opacity-80">/ 10</p>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+</div>

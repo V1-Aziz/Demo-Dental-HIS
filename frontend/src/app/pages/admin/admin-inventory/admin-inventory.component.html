@@ -1,0 +1,534 @@
+<div>
+
+  <!-- ── Toolbar ──────────────────────────────────────────────────── -->
+  <div class="flex items-center gap-3 mb-4" style="width: calc(66.667% - 12px)">
+    <div class="relative flex-1">
+      <span class="absolute inset-y-0 left-0 flex items-center pl-3">
+        <span class="material-symbols-outlined text-xl text-gray-400">search</span>
+      </span>
+      <input type="text" placeholder="Search by Item Name or ID..."
+             [(ngModel)]="searchTerm" (input)="onSearchChange()"
+             class="w-full pl-10 pr-4 py-2 bg-white text-gray-900 border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-gold/50 outline-none" />
+    </div>
+    <!-- Filter button -->
+    <div class="relative shrink-0">
+      <button type="button"
+              (click)="filterPopupOpen ? closeFilterPopup() : openFilterPopup()"
+              [class]="'relative flex items-center justify-center py-2 px-2.5 rounded-lg border transition-colors ' + (filterPopupOpen || hasActiveFilters ? 'bg-[#E6F1FB] border-[#378ADD] text-[#185FA5]' : 'bg-white border-gray-300 text-gray-700 hover:bg-[#E6F1FB] hover:border-[#378ADD] hover:text-[#185FA5]')">
+        <svg width="15" height="15" viewBox="0 0 16 16" fill="none">
+          <path d="M2 4h12M4 8h8M6 12h4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+        </svg>
+        <span *ngIf="hasActiveFilters"
+              class="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-[#378ADD]"
+              style="border:1.5px solid #e2e8f0"></span>
+      </button>
+    </div>
+
+    <div class="flex gap-2 shrink-0">
+      <button (click)="openDepositModal()"
+              style="background:#E1F5EE;color:#0F6E56;border:1px solid #5DCAA5"
+              class="flex items-center gap-1 px-3 py-2 rounded-lg text-sm font-medium">
+        <span class="material-symbols-outlined text-base leading-none">add</span> Deposit
+      </button>
+      <button (click)="openWithdrawModal()"
+              style="background:#FAEEDA;color:#854F0B;border:1px solid #EF9F27"
+              class="flex items-center gap-1 px-3 py-2 rounded-lg text-sm font-medium">
+        <span class="material-symbols-outlined text-base leading-none">remove</span> Withdraw
+      </button>
+      <button (click)="openRegisterModal()"
+              class="flex items-center gap-1 px-3 py-2 rounded-lg text-sm font-medium bg-royal text-white hover:bg-[#2c5282]">
+        <span class="material-symbols-outlined text-base leading-none">inventory_2</span> Register Item
+      </button>
+    </div>
+  </div>
+
+  <div class="flex gap-6 items-start">
+
+    <!-- ── Left: Item List ───────────────────────────────────────── -->
+    <div class="w-2/3 bg-white rounded-lg shadow-md overflow-hidden">
+      <div class="overflow-x-auto">
+      <table class="w-full">
+        <thead class="bg-gray-50">
+          <tr>
+            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Item Name</th>
+            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Item ID</th>
+            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Type</th>
+            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Qty</th>
+            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Expiry</th>
+            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Assigned By</th>
+            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Status</th>
+          </tr>
+        </thead>
+        <tbody class="bg-white divide-y divide-gray-200">
+          <tr *ngFor="let item of filteredItems" (click)="selectedItem = item"
+              [class]="'cursor-pointer transition-colors ' + (selectedItem?.id === item.id ? 'bg-blue-50' : 'hover:bg-gray-50')">
+            <td class="px-6 py-4 whitespace-nowrap font-medium text-gray-900">{{ item.name }}</td>
+            <td class="px-6 py-4 whitespace-nowrap text-gray-500 font-mono">{{ item.id }}</td>
+            <td class="px-6 py-4 whitespace-nowrap text-gray-500">{{ item.type }}</td>
+            <td class="px-6 py-4 whitespace-nowrap text-gray-700 font-semibold">{{ item.quantity }}</td>
+            <td class="px-6 py-4 whitespace-nowrap text-gray-500">{{ item.expireDate }}</td>
+            <td class="px-6 py-4 whitespace-nowrap text-gray-500">{{ item.assignedBy }}</td>
+            <td class="px-6 py-4 whitespace-nowrap">
+              <span [class]="'px-2 py-1 rounded-full text-xs font-semibold ' + statusClass(item.status)">
+                {{ item.status }}
+              </span>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+      </div>
+      <!-- Pagination -->
+      <div class="flex items-center justify-between px-4 py-1.5 border-t text-xs text-gray-600">
+        <div class="flex items-center gap-2">
+          <span class="text-gray-500">Rows:</span>
+          <select [ngModel]="pageSize" (ngModelChange)="onPageSizeChange($event)"
+                  class="border border-gray-300 rounded px-2 py-1 text-sm bg-white outline-none focus:ring-2 focus:ring-gold/50">
+            <option *ngFor="let s of pageSizeOptions" [value]="s">{{ s }}</option>
+          </select>
+        </div>
+        <div class="flex items-center gap-1">
+          <span class="text-gray-500 text-xs">{{ pageRangeStart }}–{{ pageRangeEnd }} of {{ totalItems }}</span>
+          <button (click)="goToPage(currentPage - 1)" [disabled]="currentPage <= 1"
+                  class="p-1 rounded hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed">
+            <span class="material-symbols-outlined text-base leading-none">chevron_left</span>
+          </button>
+          <span class="font-medium text-xs">{{ currentPage }} / {{ totalPages }}</span>
+          <button (click)="goToPage(currentPage + 1)" [disabled]="currentPage >= totalPages"
+                  class="p-1 rounded hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed">
+            <span class="material-symbols-outlined text-base leading-none">chevron_right</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Right: Detail Panel ───────────────────────────────────── -->
+    <div class="w-1/3 bg-white rounded-lg shadow-md p-6">
+      <h2 class="text-lg font-bold text-royal mb-4 border-b pb-2">Selected Item Info</h2>
+      <ng-container *ngIf="selectedItem; else noSelection">
+        <div class="space-y-6">
+          <div class="flex justify-between items-start">
+            <h3 class="text-xl font-bold text-royal">{{ selectedItem.name }}</h3>
+            <div [class]="'text-xs font-semibold py-1 px-3 rounded-full ' + statusClass(selectedItem.status)">
+              {{ selectedItem.status }}
+            </div>
+          </div>
+          <div class="grid grid-cols-1 gap-y-4 text-sm">
+            <div><label class="block text-xs font-medium text-gray-500">Type</label><p class="text-gray-800 font-medium">{{ selectedItem.type }}</p></div>
+            <div><label class="block text-xs font-medium text-gray-500">Quantity in Stock</label><p class="text-gray-800 font-bold text-lg">{{ selectedItem.quantity }}</p></div>
+            <div><label class="block text-xs font-medium text-gray-500">Supplier</label><p class="text-gray-800 font-medium">{{ selectedItem.supplier }}</p></div>
+            <div><label class="block text-xs font-medium text-gray-500">Unit Cost</label><p class="text-gray-800 font-medium">{{ selectedItem.cost }} SAR</p></div>
+            <div><label class="block text-xs font-medium text-gray-500">Expiry</label><p class="text-gray-800 font-medium">{{ selectedItem.expireDate }}</p></div>
+            <div><label class="block text-xs font-medium text-gray-500">Assigned By</label><p class="text-gray-800 font-medium">{{ selectedItem.assignedBy }}</p></div>
+          </div>
+        </div>
+      </ng-container>
+      <ng-template #noSelection>
+        <div class="flex items-center justify-center py-8 text-gray-400 text-sm">Select an item to view details</div>
+      </ng-template>
+    </div>
+
+  </div>
+
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════════
+     FILTER MODAL
+     ══════════════════════════════════════════════════════════════════ -->
+<div *ngIf="filterPopupOpen" class="fixed inset-0 z-50 flex items-center justify-center" style="background:rgba(0,0,0,0.45)" (click)="closeFilterPopup()">
+  <div class="bg-white rounded-xl shadow-2xl flex flex-col" style="width:480px;max-height:90vh" (click)="$event.stopPropagation()">
+    <div class="flex items-center justify-between px-6 py-4 border-b">
+      <div class="flex items-center gap-2">
+        <svg width="18" height="18" viewBox="0 0 16 16" fill="none">
+          <path d="M2 4h12M4 8h8M6 12h4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+        </svg>
+        <h2 class="text-lg font-bold text-gray-800">Filters</h2>
+      </div>
+      <button (click)="closeFilterPopup()" class="text-gray-400 hover:text-gray-600">
+        <span class="material-symbols-outlined">close</span>
+      </button>
+    </div>
+    <div class="px-6 py-4 overflow-y-auto flex-1">
+
+      <!-- Quantity -->
+      <div class="mb-3.5">
+        <div class="text-[11px] font-medium text-gray-500 uppercase tracking-wider mb-1.5">Quantity</div>
+        <select [(ngModel)]="draft.qty"
+                class="w-full rounded-md px-2 text-[12px] bg-gray-50 text-gray-800 outline-none"
+                style="height:30px;border:0.5px solid #d1d5db">
+          <option value="All">All</option>
+          <option value="Less than 10">Less than 10</option>
+          <option value="Less than 50">Less than 50</option>
+          <option value="Less than 100">Less than 100</option>
+          <option value="50 or more">50 or more</option>
+          <option value="100 or more">100 or more</option>
+        </select>
+      </div>
+
+      <!-- Type -->
+      <div class="mb-3.5">
+        <div class="text-[11px] font-medium text-gray-500 uppercase tracking-wider mb-1.5">Type</div>
+        <select [(ngModel)]="draft.type"
+                class="w-full rounded-md px-2 text-[12px] bg-gray-50 text-gray-800 outline-none"
+                style="height:30px;border:0.5px solid #d1d5db">
+          <option value="All">All</option>
+          <option *ngFor="let c of categories" [value]="c">{{ c }}</option>
+        </select>
+      </div>
+
+      <hr style="border:none;border-top:0.5px solid #e5e7eb;margin:0 0 14px 0">
+
+      <!-- Expiry date section -->
+      <div class="mb-1">
+        <div class="text-[11px] font-medium text-gray-500 uppercase tracking-wider mb-1.5">Expiry date</div>
+        <div class="rounded-md p-2.5" style="background:#f3f4f6">
+
+          <div class="mb-2.5">
+            <label class="block text-[11px] text-gray-500 font-medium mb-1">Expires in less than</label>
+            <div class="flex gap-1.5">
+              <input type="number" min="1" [(ngModel)]="draft.expiryLtValue" (ngModelChange)="onExpiryLtInput()"
+                     class="rounded-md px-1.5 text-[12px] bg-white text-gray-800 outline-none"
+                     style="height:28px;border:0.5px solid #d1d5db;width:70px">
+              <select [(ngModel)]="draft.expiryLtUnit"
+                      class="flex-1 rounded-md px-1.5 text-[12px] bg-white text-gray-800 outline-none"
+                      style="height:28px;border:0.5px solid #d1d5db">
+                <option value="Days">Days</option>
+                <option value="Weeks">Weeks</option>
+                <option value="Months">Months</option>
+                <option value="Years">Years</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="flex rounded-md overflow-hidden mb-2.5" style="border:0.5px solid #d1d5db">
+            <button type="button" (click)="draft.expiryMode = 'specific'"
+                    [class]="'flex-1 text-[11px] border-none cursor-pointer transition-colors ' + (draft.expiryMode === 'specific' ? 'bg-[#1D3557] text-white' : 'bg-white text-gray-500 hover:bg-gray-50')"
+                    style="height:27px">Specific date</button>
+            <button type="button" (click)="draft.expiryMode = 'range'"
+                    [class]="'flex-1 text-[11px] border-none cursor-pointer transition-colors ' + (draft.expiryMode === 'range' ? 'bg-[#1D3557] text-white' : 'bg-white text-gray-500 hover:bg-gray-50')"
+                    style="height:27px">Date range</button>
+          </div>
+
+          <div *ngIf="draft.expiryMode === 'specific'">
+            <label class="block text-[10px] text-gray-500 mb-1">Select date</label>
+            <input type="date" [(ngModel)]="draft.expiryDate" (ngModelChange)="onExpiryDateInput()"
+                   class="w-full rounded-md px-1.5 text-[11px] bg-white text-gray-800 outline-none"
+                   style="height:28px;border:0.5px solid #d1d5db">
+          </div>
+
+          <div *ngIf="draft.expiryMode === 'range'" class="flex gap-1.5">
+            <div class="flex-1">
+              <label class="block text-[10px] text-gray-500 mb-1">From</label>
+              <input type="date" [(ngModel)]="draft.expiryFrom" (ngModelChange)="onExpiryDateInput()"
+                     class="w-full rounded-md px-1.5 text-[11px] bg-white text-gray-800 outline-none"
+                     style="height:28px;border:0.5px solid #d1d5db">
+            </div>
+            <div class="flex-1">
+              <label class="block text-[10px] text-gray-500 mb-1">To</label>
+              <input type="date" [(ngModel)]="draft.expiryTo" (ngModelChange)="onExpiryDateInput()"
+                     class="w-full rounded-md px-1.5 text-[11px] bg-white text-gray-800 outline-none"
+                     style="height:28px;border:0.5px solid #d1d5db">
+            </div>
+          </div>
+
+          <div class="flex items-center gap-1.5 mt-2.5 pt-2.5" style="border-top:0.5px solid #d1d5db">
+            <input type="checkbox" [(ngModel)]="draft.includeNoExpiry" id="adm-inv-noExp"
+                   style="accent-color:#378ADD;cursor:pointer">
+            <label for="adm-inv-noExp" class="text-[12px] text-gray-700 cursor-pointer">Include items with no expiry</label>
+          </div>
+        </div>
+      </div>
+
+    </div>
+    <div class="flex justify-between gap-3 px-6 py-4 border-t">
+      <button (click)="clearAllFilters()" class="px-4 py-2 rounded-lg border border-gray-300 text-sm text-gray-700 hover:bg-gray-50">Clear all</button>
+      <button (click)="applyFilters()" class="px-4 py-2 rounded-lg text-sm font-medium bg-royal text-white hover:bg-[#2c5282]">Apply</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════════
+     DEPOSIT MODAL
+     ══════════════════════════════════════════════════════════════════ -->
+<div *ngIf="showDepositModal" class="fixed inset-0 z-50 flex items-center justify-center" style="background:rgba(0,0,0,0.45)">
+  <div class="bg-white rounded-xl shadow-2xl flex flex-col" style="width:480px;max-height:90vh">
+
+    <!-- Header -->
+    <div class="flex items-center justify-between px-6 py-4 border-b">
+      <div class="flex items-center gap-2">
+        <span class="material-symbols-outlined text-xl" style="color:#0F6E56">add_circle</span>
+        <h2 class="text-lg font-bold text-gray-800">Deposit Stock</h2>
+      </div>
+      <button (click)="closeDepositModal()" class="text-gray-400 hover:text-gray-600">
+        <span class="material-symbols-outlined">close</span>
+      </button>
+    </div>
+
+    <!-- Body -->
+    <div class="px-6 py-4 overflow-y-auto flex-1">
+      <!-- Input row -->
+      <div class="flex gap-2 items-end mb-2">
+        <div class="flex-1">
+          <label class="block text-xs font-medium text-gray-500 mb-1">Item</label>
+          <select [(ngModel)]="depositItemId"
+                  class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-gold/50">
+            <option [ngValue]="null" disabled>Select an item…</option>
+            <option *ngFor="let i of allItems" [ngValue]="i.item_id">{{ i.item_name }}</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-gray-500 mb-1">Qty</label>
+          <div class="flex items-center gap-1">
+            <button type="button" (click)="depositQty = depositQty > 1 ? depositQty - 1 : 1"
+                    class="w-8 h-8 rounded border border-gray-300 flex items-center justify-center hover:bg-gray-50">
+              <span class="material-symbols-outlined text-sm">remove</span>
+            </button>
+            <input type="number" [(ngModel)]="depositQty" min="1"
+                   class="w-14 text-center border border-gray-300 rounded px-1 py-1.5 text-sm outline-none" />
+            <button type="button" (click)="depositQty = depositQty + 1"
+                    class="w-8 h-8 rounded border border-gray-300 flex items-center justify-center hover:bg-gray-50">
+              <span class="material-symbols-outlined text-sm">add</span>
+            </button>
+          </div>
+        </div>
+      </div>
+      <div class="flex gap-2 items-end mb-4">
+        <div class="flex-1">
+          <label class="block text-xs font-medium text-gray-500 mb-1">Expiry Date <span class="text-red-500">*</span></label>
+          <input type="date" [(ngModel)]="depositExpireDate"
+                 class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-gold/50" />
+        </div>
+        <button (click)="addToDepositStaged()" [disabled]="!depositItemId || !depositExpireDate"
+                class="px-3 py-2 rounded-lg text-sm font-medium disabled:opacity-40 shrink-0"
+                style="background:#E1F5EE;color:#0F6E56;border:1px solid #5DCAA5">
+          + Add
+        </button>
+      </div>
+
+      <!-- Staging list -->
+      <div class="border rounded-lg overflow-hidden">
+        <div class="bg-gray-50 px-4 py-2 grid grid-cols-4 text-xs font-medium text-gray-500 uppercase border-b">
+          <div class="col-span-2">Item Name</div><div>Qty</div><div>Expiry</div>
+        </div>
+        <div style="max-height:200px;overflow-y:auto">
+          <div *ngIf="!depositStaged.length" class="px-4 py-6 text-sm text-gray-400 text-center">No items staged yet</div>
+          <div *ngFor="let s of depositStaged" class="px-4 py-2 grid grid-cols-4 items-center text-sm border-b last:border-0">
+            <div class="col-span-2 text-gray-800">{{ s.itemName }}</div>
+            <div class="font-medium">{{ s.quantity }}</div>
+            <div class="flex items-center justify-between">
+              <span class="text-gray-500">{{ s.expireDate || '—' }}</span>
+              <button (click)="removeDepositStaged(s.itemId)" class="text-gray-400 hover:text-red-500 ml-1">
+                <span class="material-symbols-outlined text-base">close</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <p class="text-xs text-gray-500 mt-2">{{ depositStaged.length }} item{{ depositStaged.length !== 1 ? 's' : '' }} staged</p>
+    </div>
+
+    <!-- Footer -->
+    <div class="flex justify-end gap-3 px-6 py-4 border-t">
+      <button (click)="closeDepositModal()" class="px-4 py-2 rounded-lg border border-gray-300 text-sm text-gray-700 hover:bg-gray-50">Cancel</button>
+      <button (click)="confirmDeposit()" [disabled]="!depositStaged.length || depositLoading"
+              class="px-4 py-2 rounded-lg text-sm font-medium text-white disabled:opacity-40"
+              style="background:#0F6E56">
+        <span *ngIf="depositLoading" class="material-symbols-outlined text-sm animate-spin mr-1">refresh</span>
+        Confirm Deposit ({{ depositStaged.length }})
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════════
+     WITHDRAW MODAL
+     ══════════════════════════════════════════════════════════════════ -->
+<div *ngIf="showWithdrawModal" class="fixed inset-0 z-50 flex items-center justify-center" style="background:rgba(0,0,0,0.45)">
+  <div class="bg-white rounded-xl shadow-2xl flex flex-col" style="width:480px;max-height:90vh">
+
+    <!-- Header -->
+    <div class="flex items-center justify-between px-6 py-4 border-b">
+      <div class="flex items-center gap-2">
+        <span class="material-symbols-outlined text-xl" style="color:#854F0B">remove_circle</span>
+        <h2 class="text-lg font-bold text-gray-800">Withdraw Stock</h2>
+      </div>
+      <button (click)="closeWithdrawModal()" class="text-gray-400 hover:text-gray-600">
+        <span class="material-symbols-outlined">close</span>
+      </button>
+    </div>
+
+    <!-- Body -->
+    <div class="px-6 py-4 overflow-y-auto flex-1">
+      <!-- Input row -->
+      <div class="flex gap-2 items-end mb-4">
+        <div class="flex-1">
+          <label class="block text-xs font-medium text-gray-500 mb-1">Item</label>
+          <select [(ngModel)]="withdrawItemId"
+                  class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-gold/50">
+            <option [ngValue]="null" disabled>Select an item…</option>
+            <option *ngFor="let i of allItems" [ngValue]="i.item_id">{{ i.item_name }}</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-gray-500 mb-1">Qty</label>
+          <div class="flex items-center gap-1">
+            <button type="button" (click)="withdrawQty = withdrawQty > 1 ? withdrawQty - 1 : 1"
+                    class="w-8 h-8 rounded border border-gray-300 flex items-center justify-center hover:bg-gray-50">
+              <span class="material-symbols-outlined text-sm">remove</span>
+            </button>
+            <input type="number" [(ngModel)]="withdrawQty" min="1"
+                   class="w-14 text-center border border-gray-300 rounded px-1 py-1.5 text-sm outline-none" />
+            <button type="button" (click)="withdrawQty = withdrawQty + 1"
+                    class="w-8 h-8 rounded border border-gray-300 flex items-center justify-center hover:bg-gray-50">
+              <span class="material-symbols-outlined text-sm">add</span>
+            </button>
+          </div>
+        </div>
+        <button (click)="addToWithdrawStaged()" [disabled]="!withdrawItemId"
+                class="px-3 py-2 rounded-lg text-sm font-medium disabled:opacity-40"
+                style="background:#FAEEDA;color:#854F0B;border:1px solid #EF9F27">
+          + Add
+        </button>
+      </div>
+
+      <!-- Staging list -->
+      <div class="border rounded-lg overflow-hidden mb-4">
+        <div class="bg-gray-50 px-4 py-2 grid grid-cols-3 text-xs font-medium text-gray-500 uppercase border-b">
+          <div class="col-span-2">Item Name</div><div>Qty</div>
+        </div>
+        <div style="max-height:200px;overflow-y:auto">
+          <div *ngIf="!withdrawStaged.length" class="px-4 py-6 text-sm text-gray-400 text-center">No items staged yet</div>
+          <div *ngFor="let s of withdrawStaged" class="px-4 py-2 grid grid-cols-3 items-center text-sm border-b last:border-0">
+            <div class="col-span-2 text-gray-800">{{ s.itemName }}</div>
+            <div class="flex items-center justify-between">
+              <span class="font-medium">{{ s.quantity }}</span>
+              <button (click)="removeWithdrawStaged(s.itemId)" class="text-gray-400 hover:text-red-500">
+                <span class="material-symbols-outlined text-base">close</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <p class="text-xs text-gray-500 mb-4">{{ withdrawStaged.length }} item{{ withdrawStaged.length !== 1 ? 's' : '' }} staged</p>
+
+      <!-- Requested By -->
+      <div class="relative">
+        <label class="block text-xs font-medium text-gray-500 mb-1">Requested By <span class="text-red-500">*</span></label>
+        <div class="relative">
+          <span class="absolute inset-y-0 left-0 flex items-center pl-3">
+            <span class="material-symbols-outlined text-base text-gray-400">search</span>
+          </span>
+          <input type="text" [(ngModel)]="withdrawEmpSearch" (input)="onEmpSearch()"
+                 placeholder="Search employee by name…"
+                 class="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-gold/50" />
+        </div>
+        <div *ngIf="withdrawEmpListOpen && withdrawEmpList.length"
+             class="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg overflow-hidden">
+          <button *ngFor="let e of withdrawEmpList" (click)="selectEmp(e)"
+                  class="w-full text-left px-4 py-2.5 text-sm hover:bg-gray-50 flex justify-between items-center">
+            <span class="font-medium text-gray-800">{{ e.fullName }}</span>
+            <span class="text-xs text-gray-400">{{ e.roleName }}</span>
+          </button>
+        </div>
+        <p *ngIf="withdrawSelectedEmp" class="text-xs text-green-700 mt-1">
+          <span class="material-symbols-outlined text-xs">check_circle</span>
+          {{ withdrawSelectedEmp.fullName }} ({{ withdrawSelectedEmp.roleName }})
+        </p>
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <div class="flex justify-end gap-3 px-6 py-4 border-t">
+      <button (click)="closeWithdrawModal()" class="px-4 py-2 rounded-lg border border-gray-300 text-sm text-gray-700 hover:bg-gray-50">Cancel</button>
+      <button (click)="confirmWithdraw()" [disabled]="!withdrawStaged.length || !withdrawSelectedEmp || withdrawLoading"
+              class="px-4 py-2 rounded-lg text-sm font-medium text-white disabled:opacity-40"
+              style="background:#854F0B">
+        <span *ngIf="withdrawLoading" class="material-symbols-outlined text-sm animate-spin mr-1">refresh</span>
+        Confirm Withdrawal ({{ withdrawStaged.length }})
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════════
+     REGISTER ITEM MODAL
+     ══════════════════════════════════════════════════════════════════ -->
+<div *ngIf="showRegisterModal" class="fixed inset-0 z-50 flex items-center justify-center" style="background:rgba(0,0,0,0.45)">
+  <div class="bg-white rounded-xl shadow-2xl flex flex-col" style="width:480px;max-height:90vh">
+
+    <!-- Header -->
+    <div class="flex items-center justify-between px-6 py-4 border-b">
+      <div class="flex items-center gap-2">
+        <span class="material-symbols-outlined text-xl text-royal">inventory_2</span>
+        <h2 class="text-lg font-bold text-gray-800">Register New Item</h2>
+      </div>
+      <button (click)="closeRegisterModal()" class="text-gray-400 hover:text-gray-600">
+        <span class="material-symbols-outlined">close</span>
+      </button>
+    </div>
+
+    <!-- Body -->
+    <div class="px-6 py-4 overflow-y-auto flex-1 space-y-4">
+      <div class="grid grid-cols-2 gap-4">
+        <!-- Item Name -->
+        <div class="col-span-2">
+          <label class="block text-xs font-medium text-gray-500 mb-1">Item Name <span class="text-red-500">*</span></label>
+          <input type="text" [(ngModel)]="registerForm.itemName" placeholder="e.g. Latex Gloves (M)"
+                 class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-gold/50" />
+        </div>
+        <!-- Category -->
+        <div>
+          <label class="block text-xs font-medium text-gray-500 mb-1">Category <span class="text-red-500">*</span></label>
+          <select [(ngModel)]="registerForm.category"
+                  class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-gold/50">
+            <option value="" disabled>Select…</option>
+            <option *ngFor="let c of categories" [value]="c">{{ c }}</option>
+          </select>
+        </div>
+        <!-- Low Stock Limit -->
+        <div>
+          <label class="block text-xs font-medium text-gray-500 mb-1">Low Stock Limit <span class="text-red-500">*</span></label>
+          <input type="number" [(ngModel)]="registerForm.lowStockLimit" min="1"
+                 class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-gold/50" />
+        </div>
+        <!-- Supplier -->
+        <div>
+          <label class="block text-xs font-medium text-gray-500 mb-1">Supplier</label>
+          <input type="text" [(ngModel)]="registerForm.supplier" placeholder="Optional"
+                 class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-gold/50" />
+        </div>
+        <!-- Unit Cost -->
+        <div>
+          <label class="block text-xs font-medium text-gray-500 mb-1">Unit Cost (SAR)</label>
+          <input type="number" [(ngModel)]="registerForm.unitCost" min="0" placeholder="Optional"
+                 class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-gold/50" />
+        </div>
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <div class="flex justify-end gap-3 px-6 py-4 border-t">
+      <button (click)="closeRegisterModal()" class="px-4 py-2 rounded-lg border border-gray-300 text-sm text-gray-700 hover:bg-gray-50">Cancel</button>
+      <button (click)="confirmRegister()"
+              [disabled]="!registerForm.itemName || !registerForm.category || !registerForm.lowStockLimit || registerLoading"
+              class="px-4 py-2 rounded-lg text-sm font-medium bg-royal text-white hover:bg-[#2c5282] disabled:opacity-40">
+        <span *ngIf="registerLoading" class="material-symbols-outlined text-sm animate-spin mr-1">refresh</span>
+        Register Item
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════════
+     TOAST
+     ══════════════════════════════════════════════════════════════════ -->
+<div *ngIf="toast" class="fixed bottom-6 right-6 z-[60] flex items-start gap-3 px-4 py-3 rounded-xl shadow-lg text-sm font-medium max-w-sm"
+     [ngClass]="{
+       'bg-green-50 text-green-800 border border-green-200': toast.type === 'success',
+       'bg-red-50 text-red-800 border border-red-200':      toast.type === 'error',
+       'bg-amber-50 text-amber-800 border border-amber-200':toast.type === 'warning'
+     }">
+  <span class="material-symbols-outlined text-xl shrink-0">
+    {{ toast.type === 'success' ? 'check_circle' : toast.type === 'warning' ? 'warning' : 'error' }}
+  </span>
+  <span>{{ toast.message }}</span>
+</div>

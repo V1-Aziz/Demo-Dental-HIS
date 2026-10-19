@@ -1,0 +1,66 @@
+import { Router } from 'express';
+import authRoutes from './auth.routes';
+import patientRoutes from './patient.routes';
+import appointmentRoutes from './appointment.routes';
+import recordRoutes from './record.routes';
+import labRoutes from './lab.routes';
+import inventoryRoutes from './inventory.routes';
+import ticketRoutes from './ticket.routes';
+import auditRoutes from './audit.routes';
+import userRoutes from './user.routes';
+import diagnosisRoutes from './diagnosis.routes';
+import dashboardRoutes from './dashboard.routes';
+import notificationRoutes from './notification.routes';
+import reportRoutes from './reports/patient-reports.routes';
+import appointmentReportRoutes from './reports/appointment-reports.routes';
+import inventoryReportRoutes from './reports/inventory-reports.routes';
+import studentReportRoutes from './reports/student-reports.routes';
+import reportsExportRoutes from './reports/reports-export.routes';
+import adminStatsRoutes from './admin-stats.routes';
+import academicRoutes from './academic.routes';
+import patientFileRoutes from './patient-file.routes';
+import dentalChartRoutes from './dental-chart.routes';
+import treatmentRoutes from './treatment.routes';
+import screeningRoutes from './screening.routes';
+import screeningRequestsRoutes from './screening-requests.routes';
+import radiologistRoutes from './radiologist.routes';
+import visitsRoutes from './visits.routes';
+import systemSettingsRoutes from './system-settings.routes';
+import adminSystemSettingsRoutes from './admin-system-settings.routes';
+import { getPublicValues } from '../controllers/system-settings/system-lookup.controller';
+
+const router = Router();
+
+router.use('/auth', authRoutes);
+router.use('/patients', patientRoutes);
+router.use('/appointments', appointmentRoutes);
+router.use('/records', recordRoutes);
+router.use('/lab', labRoutes);
+router.use('/inventory', inventoryRoutes);
+router.use('/tickets', ticketRoutes);
+router.use('/audit', auditRoutes);
+router.use('/users', userRoutes);
+router.use('/diagnosis', diagnosisRoutes);
+router.use('/dashboard', dashboardRoutes);
+router.use('/notifications', notificationRoutes);
+router.use('/reports', reportRoutes);
+router.use('/reports', appointmentReportRoutes);
+router.use('/reports', inventoryReportRoutes);
+router.use('/reports', studentReportRoutes);
+router.use('/reports', reportsExportRoutes);
+router.use('/admin/stats', adminStatsRoutes);
+router.use('/academic', academicRoutes);
+router.use('/patients', patientFileRoutes);
+router.use('/dental-chart', dentalChartRoutes);
+router.use('/treatment', treatmentRoutes);
+router.use('/screening', screeningRoutes);
+router.use('/screening-requests', screeningRequestsRoutes);
+router.use('/radiologist', radiologistRoutes);
+router.use('/visits', visitsRoutes);
+router.use('/system-settings', systemSettingsRoutes);
+router.use('/admin/system-settings', adminSystemSettingsRoutes);
+
+// Public lookup endpoint — whitelisted categories only (e.g. contact_type)
+router.get('/lookups/public/:categoryKey', getPublicValues);
+
+export default router;

@@ -1,0 +1,245 @@
+<div class="space-y-5">
+
+  <!-- Toolbar -->
+  <div class="flex flex-col md:flex-row items-center gap-4">
+    <div class="relative w-full md:flex-1">
+      <span class="absolute inset-y-0 left-0 flex items-center pl-3">
+        <span class="material-symbols-outlined text-xl text-gray-400">search</span>
+      </span>
+      <input type="text" placeholder="Search by Patient Name, File No, or Order ID…"
+             [(ngModel)]="searchTerm" (input)="onSearchChange()"
+             class="w-full pl-10 pr-4 py-2 bg-white text-gray-900 border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-gold/50 outline-none" />
+    </div>
+    <button (click)="isFormModalOpen = true"
+            class="shrink-0 bg-royal text-white px-6 py-2 rounded-lg font-bold flex items-center gap-2 hover:bg-[#2c5282] transition-all">
+      <span class="material-symbols-outlined text-xl">add</span> New Lab Request
+    </button>
+  </div>
+
+  <!-- Legend -->
+  <div class="flex items-center gap-3 text-xs font-semibold">
+    <span class="text-gray-500 mr-1">Key:</span>
+    <span class="flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#1a365d] text-white">
+      <span class="w-2 h-2 rounded-full bg-white inline-block"></span> You
+    </span>
+    <span class="flex items-center gap-1.5 px-3 py-1 rounded-full border border-yellow-400 bg-yellow-50 text-yellow-800">
+      <span class="w-2 h-2 rounded-full bg-yellow-400 inline-block"></span> Student
+    </span>
+  </div>
+
+  <!-- Table card -->
+  <div class="bg-white rounded-xl shadow-md overflow-hidden border border-gray-100">
+    <div class="overflow-x-auto">
+      <table class="w-full text-left text-sm">
+        <thead class="bg-gray-50 border-b">
+          <tr class="text-xs font-bold text-gray-500 uppercase tracking-wider">
+            <th class="px-5 py-4">Order ID</th>
+            <th class="px-5 py-4">Requester</th>
+            <th class="px-5 py-4">Patient</th>
+            <th class="px-5 py-4">Work Type</th>
+            <th class="px-5 py-4">Date Sent</th>
+            <th class="px-5 py-4">Status</th>
+            <th class="px-5 py-4 text-right">Actions</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-100">
+
+          @if (loading) {
+            <tr><td colspan="7" class="text-center py-10 text-gray-400">Loading…</td></tr>
+          } @else if (orders.length === 0) {
+            <tr><td colspan="7" class="text-center py-10 text-gray-400">No lab requests found.</td></tr>
+          } @else {
+            @for (order of orders; track order.id) {
+              <tr [class]="'hover:bg-gray-50/70 transition-colors border-l-4 ' + (order.requesterKind === 'student' ? 'border-l-[#d69e2e] bg-yellow-50/30' : 'border-l-transparent')">
+
+                <!-- Order ID -->
+                <td class="px-5 py-4 font-mono font-bold text-royal">#{{ order.id }}</td>
+
+                <!-- Requester -->
+                <td class="px-5 py-4">
+                  <div class="flex items-center gap-2.5">
+                    <span [class]="'w-9 h-9 rounded-full flex items-center justify-center text-[11px] font-extrabold flex-shrink-0 ' +
+                                   (order.requesterKind === 'student' ? 'bg-[#d69e2e] text-gray-900' : 'bg-[#1a365d] text-white')">
+                      {{ initials(order.requesterName) }}
+                    </span>
+                    <div class="min-w-0">
+                      <div class="font-semibold text-gray-900 text-sm truncate">
+                        {{ order.requesterKind === 'doctor' ? 'You' : order.requesterName }}
+                      </div>
+                      @if (order.requesterKind === 'student') {
+                        <span class="inline-block mt-0.5 px-1.5 py-0.5 text-[9px] font-extrabold uppercase tracking-widest rounded border border-yellow-400 bg-yellow-50 text-yellow-800">
+                          STUDENT
+                        </span>
+                      } @else {
+                        <div class="text-xs text-gray-400 mt-0.5 truncate">{{ order.requesterName }}</div>
+                      }
+                    </div>
+                  </div>
+                </td>
+
+                <!-- Patient -->
+                <td class="px-5 py-4">
+                  <div class="font-medium text-gray-900">{{ order.patientName }}</div>
+                  <div class="text-xs text-gray-400 mt-0.5">File #{{ order.patientFileNo }}</div>
+                </td>
+
+                <!-- Work Type -->
+                <td class="px-5 py-4 text-gray-600 max-w-[180px] truncate">{{ order.workType }}</td>
+
+                <!-- Date Sent -->
+                <td class="px-5 py-4 text-gray-500">{{ order.dateSent }}</td>
+
+                <!-- Status -->
+                <td class="px-5 py-4">
+                  <span [class]="'px-2.5 py-1 rounded-full text-[11px] font-bold ' + statusClass(order.status)">
+                    {{ order.status }}
+                  </span>
+                </td>
+
+                <!-- Actions -->
+                <td class="px-5 py-4 text-right">
+                  <div class="flex items-center justify-end gap-2">
+                    <button (click)="selectedDetail = order"
+                            class="text-xs font-bold text-royal hover:text-gold border border-royal/20 rounded px-3 py-1 hover:bg-royal/5 transition-colors">
+                      Details
+                    </button>
+                    @if (order.requesterKind === 'student' && order.status === 'Pending') {
+                      <button (click)="approve(order)" [disabled]="isReviewing"
+                              class="text-xs font-bold text-green-700 border border-green-200 bg-green-50 rounded px-3 py-1 hover:bg-green-100 transition-colors disabled:opacity-50">
+                        Approve
+                      </button>
+                      <button (click)="startReject(order)" [disabled]="isReviewing"
+                              class="text-xs font-bold text-red-700 border border-red-200 bg-red-50 rounded px-3 py-1 hover:bg-red-100 transition-colors disabled:opacity-50">
+                        Reject
+                      </button>
+                    }
+                  </div>
+                </td>
+              </tr>
+            }
+          }
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Pagination footer -->
+    <div class="flex items-center justify-between px-5 py-2.5 border-t text-xs text-gray-600 bg-gray-50">
+      <div class="flex items-center gap-2">
+        <span class="text-gray-500">Rows:</span>
+        <select [ngModel]="pageSize" (ngModelChange)="onPageSizeChange($event)"
+                class="border border-gray-300 rounded px-2 py-1 text-xs bg-white outline-none">
+          @for (s of pageSizeOptions; track s) {
+            <option [value]="s">{{ s }}</option>
+          }
+        </select>
+      </div>
+      <div class="flex items-center gap-2">
+        <span class="text-gray-500">{{ rangeStart }}–{{ rangeEnd }} of {{ totalRows }}</span>
+        <button (click)="goToPage(currentPage - 1)" [disabled]="currentPage <= 1"
+                class="p-1 rounded hover:bg-gray-200 disabled:opacity-40 disabled:cursor-not-allowed">
+          <span class="material-symbols-outlined text-base leading-none">chevron_left</span>
+        </button>
+        <span class="font-medium">{{ currentPage }} / {{ totalPages }}</span>
+        <button (click)="goToPage(currentPage + 1)" [disabled]="currentPage >= totalPages"
+                class="p-1 rounded hover:bg-gray-200 disabled:opacity-40 disabled:cursor-not-allowed">
+          <span class="material-symbols-outlined text-base leading-none">chevron_right</span>
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Detail Modal ──────────────────────────────────────────────────────── -->
+@if (selectedDetail) {
+  <div class="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50"
+       (click)="selectedDetail = null">
+    <div class="bg-white rounded-xl shadow-2xl w-full max-w-lg overflow-hidden" (click)="$event.stopPropagation()">
+      <div class="bg-royal p-4 flex items-center justify-between text-white">
+        <h3 class="font-bold text-lg">Lab Request #{{ selectedDetail.id }}</h3>
+        <button (click)="selectedDetail = null" class="hover:bg-white/10 p-1 rounded-full">
+          <span class="material-symbols-outlined">close</span>
+        </button>
+      </div>
+      <div class="p-6 space-y-4 text-sm">
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <p class="text-xs font-bold text-gray-500 uppercase">Patient</p>
+            <p class="font-semibold text-gray-900">{{ selectedDetail.patientName }}</p>
+            <p class="text-xs text-gray-400">File #{{ selectedDetail.patientFileNo }}</p>
+          </div>
+          <div>
+            <p class="text-xs font-bold text-gray-500 uppercase">Requester</p>
+            <p class="font-semibold text-gray-900">
+              {{ selectedDetail.requesterKind === 'doctor' ? 'You' : selectedDetail.requesterName }}
+            </p>
+            <p class="text-xs text-gray-400 uppercase tracking-wide">{{ selectedDetail.requesterKind }}</p>
+          </div>
+          <div>
+            <p class="text-xs font-bold text-gray-500 uppercase">Date Sent</p>
+            <p class="text-gray-900">{{ selectedDetail.dateSent }}</p>
+          </div>
+          <div>
+            <p class="text-xs font-bold text-gray-500 uppercase">Status</p>
+            <span [class]="'px-2 py-0.5 rounded-full text-[11px] font-bold ' + statusClass(selectedDetail.status)">
+              {{ selectedDetail.status }}
+            </span>
+          </div>
+        </div>
+        <div>
+          <p class="text-xs font-bold text-gray-500 uppercase mb-1">Work Type</p>
+          <p class="text-gray-900 font-medium">{{ selectedDetail.workType }}</p>
+        </div>
+        @if (selectedDetail.clinicalNote.split('\n').slice(1).join('').trim()) {
+          <div>
+            <p class="text-xs font-bold text-gray-500 uppercase mb-1">Clinical Instructions</p>
+            <p class="text-gray-700 bg-gray-50 rounded p-3 leading-relaxed whitespace-pre-line">
+              {{ selectedDetail.clinicalNote.split('\n').slice(1).join('\n').trim() }}
+            </p>
+          </div>
+        }
+        @if (selectedDetail.supervisorFeedback) {
+          <div class="bg-red-50 border border-red-200 rounded p-3">
+            <p class="text-xs font-bold text-red-600 uppercase mb-1">Supervisor Feedback</p>
+            <p class="text-red-700">{{ selectedDetail.supervisorFeedback }}</p>
+          </div>
+        }
+      </div>
+    </div>
+  </div>
+}
+
+<!-- ── Reject Dialog ─────────────────────────────────────────────────────── -->
+@if (rejectTarget) {
+  <div class="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+    <div class="bg-white rounded-xl shadow-2xl w-full max-w-md overflow-hidden">
+      <div class="p-5 border-b flex items-center gap-3">
+        <span class="material-symbols-outlined text-red-600 text-2xl">cancel</span>
+        <h3 class="font-bold text-gray-900">Reject Lab Request #{{ rejectTarget.id }}</h3>
+      </div>
+      <div class="p-5 space-y-4">
+        <p class="text-sm text-gray-600">Please provide a reason. The student will be notified.</p>
+        <textarea rows="3" [(ngModel)]="rejectReason" placeholder="Rejection reason…"
+                  class="w-full p-3 border border-gray-300 rounded-lg text-sm text-gray-900 focus:ring-2 focus:ring-red-200 focus:border-red-400 outline-none resize-none"></textarea>
+        @if (rejectError) {
+          <p class="text-xs text-red-600">{{ rejectError }}</p>
+        }
+      </div>
+      <div class="px-5 pb-5 flex justify-end gap-3">
+        <button (click)="cancelReject()"
+                class="px-5 py-2 text-gray-600 font-bold hover:bg-gray-50 rounded-lg text-sm">Cancel</button>
+        <button (click)="confirmReject()" [disabled]="isReviewing"
+                class="px-6 py-2 bg-red-600 text-white font-bold rounded-lg text-sm hover:bg-red-700 disabled:opacity-50">
+          {{ isReviewing ? 'Rejecting…' : 'Confirm Reject' }}
+        </button>
+      </div>
+    </div>
+  </div>
+}
+
+<!-- ── New Lab Request Modal ─────────────────────────────────────────────── -->
+@if (isFormModalOpen) {
+  <app-lab-request-form-modal
+    (closed)="isFormModalOpen = false"
+    (submitted)="onFormSubmitted()"
+  ></app-lab-request-form-modal>
+}

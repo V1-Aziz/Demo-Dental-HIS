@@ -1,0 +1,368 @@
+<!-- Backdrop -->
+<div class="fixed inset-0 flex items-center justify-center z-50 p-4"
+     style="background:rgba(0,0,0,0.45)">
+
+  <!-- Modal card -->
+  <div class="bg-white rounded-xl shadow-2xl flex flex-col overflow-hidden"
+       style="width:520px; max-height:92vh">
+
+    <!-- Header -->
+    <div class="flex items-center justify-between px-6 py-4 border-b bg-white sticky top-0 z-10">
+      <h3 class="text-xl font-bold text-royal">Book Appointment</h3>
+      <button (click)="close()" class="text-gray-400 hover:text-gray-600 transition-colors">
+        <span class="material-symbols-outlined text-2xl leading-none">close</span>
+      </button>
+    </div>
+
+    <!-- Step indicator -->
+    <div class="flex items-center px-8 pt-5 pb-2">
+      <ng-container *ngFor="let n of [1,2,3]; let last = last">
+        <div class="flex flex-col items-center">
+          <div [class]="stepCircleClass(n)">
+            <span *ngIf="stepState(n) !== 'done'">{{ n }}</span>
+            <span *ngIf="stepState(n) === 'done'" class="material-symbols-outlined text-base leading-none">check</span>
+          </div>
+          <span class="text-xs mt-1 font-medium"
+                [class]="stepState(n) === 'active' ? 'text-royal' : stepState(n) === 'done' ? 'text-green-600' : 'text-gray-400'">
+            {{ n === 1 ? 'Patient' : n === 2 ? 'Schedule' : 'Confirm' }}
+          </span>
+        </div>
+        <div *ngIf="!last" [class]="lineClass(n)" style="margin-bottom:16px"></div>
+      </ng-container>
+    </div>
+
+    <!-- ─── Body ─────────────────────────────────────────────── -->
+    <div class="overflow-y-auto flex-1 px-6 py-4">
+
+      <!-- ── STEP 1 ── -->
+      <ng-container *ngIf="step === 1">
+        <p class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-4">Patient, Type &amp; Assignment</p>
+
+        <!-- Patient searchable dropdown -->
+        <div class="mb-4">
+          <label class="block text-sm font-medium text-gray-700 mb-1">
+            Patient <span class="text-red-500">*</span>
+          </label>
+
+          <!-- Selected tag -->
+          <div *ngIf="selectedPatient"
+               class="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium"
+               style="background:#E6F1FB;border:0.5px solid #85B7EB;color:#0C447C">
+            <span class="material-symbols-outlined text-base leading-none">person</span>
+            <span>{{ selectedPatient.full_name }} &middot; #{{ selectedPatient.file_number }}</span>
+            <button (click)="clearPatient()" class="ml-auto text-[#0C447C] hover:text-red-500 transition-colors">
+              <span class="material-symbols-outlined text-base leading-none">close</span>
+            </button>
+          </div>
+
+          <!-- Search input -->
+          <div *ngIf="!selectedPatient" class="relative">
+            <span class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+              <span class="material-symbols-outlined text-lg text-gray-400">search</span>
+            </span>
+            <input
+              type="text"
+              placeholder="Search by name or file number..."
+              [value]="patientSearchTerm"
+              (input)="onSearchInput($any($event.target).value)"
+              (focus)="onSearchFocus()"
+              (blur)="onSearchBlur()"
+              class="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-gold/50" />
+
+            <!-- Dropdown -->
+            <div *ngIf="isDropdownVisible"
+                 class="absolute z-20 w-full bg-white border border-gray-200 rounded-lg shadow-lg mt-1 max-h-52 overflow-y-auto">
+              <div *ngIf="searchResults.length === 0"
+                   class="px-4 py-3 text-sm text-gray-400 text-center">No patients found</div>
+              <button
+                *ngFor="let p of searchResults"
+                type="button"
+                (mousedown)="selectPatient(p)"
+                class="w-full flex items-center justify-between px-4 py-2.5 hover:bg-gray-50 transition-colors text-left">
+                <span class="text-sm text-gray-900" [innerHTML]="highlightMatch(p.full_name, patientSearchTerm)"></span>
+                <span class="text-xs font-mono text-gray-500 ml-2 shrink-0">#{{ p.file_number }}</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Appointment type -->
+        <div class="mb-4">
+          <label class="block text-sm font-medium text-gray-700 mb-1">
+            Appointment Type <span class="text-red-500">*</span>
+          </label>
+          <select [(ngModel)]="selectedTypeId"
+                  class="w-full border border-gray-300 rounded-lg py-2 px-3 text-sm text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-gold/50">
+            <option [ngValue]="0" disabled>— Select type —</option>
+            <option *ngFor="let t of appointmentTypes" [ngValue]="t.type_id">
+              {{ t.type_name }} ({{ t.duration }} min)
+            </option>
+          </select>
+        </div>
+
+        <!-- Supervisor / Doctor -->
+        <div class="mb-4">
+          <!-- Label row with optional auto-fill badge -->
+          <div class="flex items-center gap-2 mb-1">
+            <label class="block text-sm font-medium text-gray-700">
+              {{ supervisorLabelText }} <span class="text-red-500">*</span>
+            </label>
+            <span *ngIf="supervisorAutoFilled"
+                  class="inline-flex items-center gap-1 text-xs text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-full px-2 py-0.5">
+              <span class="material-symbols-outlined text-xs leading-none">auto_fix_high</span>
+              auto-filled from student
+            </span>
+          </div>
+
+          <select [(ngModel)]="selectedDoctorId"
+                  (ngModelChange)="onDoctorChange()"
+                  class="w-full border border-gray-300 rounded-lg py-2 px-3 text-sm text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-gold/50">
+            <option [ngValue]="0" disabled>— Select doctor —</option>
+            <option *ngFor="let d of doctors" [ngValue]="d.employee_id">
+              {{ d.doctor_name }}<ng-container *ngIf="d.specialization"> — {{ d.specialization }}</ng-container>
+            </option>
+          </select>
+
+          <!-- Dismissible auto-fill info banner -->
+          <div *ngIf="showAutoFillBanner"
+               class="mt-2 flex items-start gap-2 text-xs text-blue-800 bg-blue-50 border border-blue-200 rounded-lg px-3 py-2">
+            <span class="material-symbols-outlined text-sm leading-none mt-0.5 shrink-0">info</span>
+            <span class="flex-1">
+              The supervisor was auto-filled based on the selected student's assigned doctor.
+              You can change it if a different doctor is on shift.
+            </span>
+            <button (click)="showAutoFillBanner = false"
+                    class="text-blue-600 hover:text-blue-900 transition-colors ml-1 shrink-0">
+              <span class="material-symbols-outlined text-sm leading-none">close</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Student (optional) -->
+        <div class="mb-2">
+          <label class="block text-sm font-medium text-gray-700 mb-1">
+            Performed by — Student
+            <span class="ml-1 text-xs font-normal text-gray-400">(optional)</span>
+          </label>
+
+          <!-- Selected student tag -->
+          <div *ngIf="selectedStudent"
+               class="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium"
+               style="background:#F0FDF4;border:0.5px solid #86EFAC;color:#166534">
+            <span class="material-symbols-outlined text-base leading-none">school</span>
+            <span>{{ studentLabel(selectedStudent) }}</span>
+            <button (click)="clearStudent()" class="ml-auto text-[#166534] hover:text-red-500 transition-colors">
+              <span class="material-symbols-outlined text-base leading-none">close</span>
+            </button>
+          </div>
+
+          <!-- Student search input -->
+          <div *ngIf="!selectedStudent" class="relative">
+            <span class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+              <span class="material-symbols-outlined text-lg text-gray-400">search</span>
+            </span>
+            <input
+              type="text"
+              placeholder="Search by name or student ID..."
+              [value]="studentSearchTerm"
+              (input)="onStudentSearchInput($any($event.target).value)"
+              (focus)="onStudentSearchFocus()"
+              (blur)="onStudentSearchBlur()"
+              class="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-gold/50" />
+
+            <!-- Student dropdown -->
+            <div *ngIf="isStudentDropdownVisible && studentSearchResults.length > 0"
+                 class="absolute z-20 w-full bg-white border border-gray-200 rounded-lg shadow-lg mt-1 max-h-44 overflow-y-auto">
+              <button
+                *ngFor="let s of studentSearchResults"
+                type="button"
+                (mousedown)="selectStudent(s)"
+                class="w-full flex items-center justify-between px-4 py-2.5 hover:bg-gray-50 transition-colors text-left">
+                <span class="text-sm text-gray-900">{{ s.first_name }} {{ s.last_name }}</span>
+                <span class="text-xs text-gray-500 ml-2 shrink-0">Level {{ s.academic_level }} · #{{ s.academic_id }}</span>
+              </button>
+            </div>
+            <div *ngIf="isStudentDropdownVisible && studentSearchResults.length === 0"
+                 class="absolute z-20 w-full bg-white border border-gray-200 rounded-lg shadow-lg mt-1 px-4 py-3 text-sm text-gray-400 text-center">
+              No students found
+            </div>
+          </div>
+        </div>
+      </ng-container>
+
+      <!-- ── STEP 2 ── -->
+      <ng-container *ngIf="step === 2">
+        <p class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-4">Pick a Date &amp; Time</p>
+
+        <!-- Calendar -->
+        <div class="mb-4">
+          <!-- Month navigation -->
+          <div class="flex items-center justify-between mb-3">
+            <button (click)="prevMonth()" class="p-1 rounded hover:bg-gray-100 transition-colors">
+              <span class="material-symbols-outlined text-xl text-gray-600 leading-none">chevron_left</span>
+            </button>
+            <span class="text-sm font-bold text-royal">{{ selectedMonthLabel }}</span>
+            <button (click)="nextMonth()" class="p-1 rounded hover:bg-gray-100 transition-colors">
+              <span class="material-symbols-outlined text-xl text-gray-600 leading-none">chevron_right</span>
+            </button>
+          </div>
+
+          <!-- Loading overlay -->
+          <div *ngIf="isLoadingCalendar" class="flex items-center justify-center h-40 text-sm text-gray-400">
+            Loading availability...
+          </div>
+
+          <!-- Grid -->
+          <div *ngIf="!isLoadingCalendar">
+            <!-- Day-of-week headers -->
+            <div class="grid grid-cols-7 mb-1">
+              <div *ngFor="let lbl of weekDayLabels"
+                   class="text-center text-xs font-semibold text-gray-400 py-1">{{ lbl }}</div>
+            </div>
+            <!-- Day cells -->
+            <div class="grid grid-cols-7 gap-y-1">
+              <div *ngFor="let cell of calendarDays" class="text-center py-0.5">
+                <button
+                  *ngIf="cell.day > 0"
+                  type="button"
+                  [class]="calendarDayClass(cell)"
+                  (click)="selectDay(cell)">
+                  {{ cell.day }}
+                </button>
+                <div *ngIf="cell.day === 0" class="h-9 w-9 mx-auto"></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- No-schedule notice -->
+          <p *ngIf="noScheduleData" class="mt-2 text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded-md px-3 py-1.5">
+            No availability schedule found for this doctor.
+          </p>
+
+          <!-- Legend -->
+          <div class="flex items-center gap-4 mt-3 text-xs text-gray-500">
+            <span class="flex items-center gap-1">
+              <span class="inline-block w-2.5 h-2.5 rounded-full bg-[#E1F5EE] border border-[#085041]/30"></span> Available
+            </span>
+            <span class="flex items-center gap-1">
+              <span class="inline-block w-2.5 h-2.5 rounded-full bg-gray-200"></span> Fully booked
+            </span>
+            <span class="flex items-center gap-1">
+              <span class="inline-block w-2.5 h-2.5 rounded-full bg-royal"></span> Selected
+            </span>
+          </div>
+        </div>
+
+        <!-- Time slot -->
+        <div *ngIf="selectedDay">
+          <label class="block text-sm font-medium text-gray-700 mb-1">
+            Available times — {{ selectedMonthLabel }} {{ selectedDay }}
+          </label>
+          <div *ngIf="isLoadingSlots" class="text-sm text-gray-400">Loading slots...</div>
+          <select *ngIf="!isLoadingSlots" [(ngModel)]="selectedSlot"
+                  class="w-full border border-gray-300 rounded-lg py-2 px-3 text-sm text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-gold/50">
+            <option value="" disabled>— Select a time —</option>
+            <option *ngFor="let slot of timeSlots" [value]="slot">{{ slot }}</option>
+          </select>
+          <p *ngIf="!isLoadingSlots && timeSlots.length === 0"
+             class="text-sm text-gray-400 mt-1">No available slots for this day.</p>
+        </div>
+      </ng-container>
+
+      <!-- ── STEP 3 ── -->
+      <ng-container *ngIf="step === 3">
+        <p class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-4">Confirm Booking</p>
+
+        <div class="border border-gray-200 rounded-xl p-5 space-y-3 bg-gray-50">
+          <!-- Patient -->
+          <div class="flex items-start gap-3">
+            <span class="material-symbols-outlined text-royal text-xl mt-0.5">person</span>
+            <div>
+              <p class="text-xs text-gray-400 font-semibold uppercase">Patient</p>
+              <p class="text-sm font-medium text-gray-800">{{ selectedPatient?.full_name }}</p>
+              <p class="text-xs text-gray-500 font-mono">#{{ selectedPatient?.file_number }}</p>
+            </div>
+          </div>
+
+          <!-- Student (only when assigned) -->
+          <div *ngIf="selectedStudent" class="flex items-start gap-3">
+            <span class="material-symbols-outlined text-emerald-600 text-xl mt-0.5">school</span>
+            <div>
+              <p class="text-xs text-gray-400 font-semibold uppercase">Performed by (Student)</p>
+              <p class="text-sm font-medium text-gray-800">{{ studentLabel(selectedStudent) }}</p>
+            </div>
+          </div>
+
+          <!-- Doctor / Supervisor -->
+          <div class="flex items-start gap-3">
+            <span class="material-symbols-outlined text-royal text-xl mt-0.5">stethoscope</span>
+            <div>
+              <p class="text-xs text-gray-400 font-semibold uppercase">{{ selectedStudent ? 'Supervisor — Doctor' : 'Doctor' }}</p>
+              <p class="text-sm font-medium text-gray-800">{{ selectedDoctorName }}</p>
+            </div>
+          </div>
+
+          <!-- Type -->
+          <div class="flex items-start gap-3">
+            <span class="material-symbols-outlined text-royal text-xl mt-0.5">medical_services</span>
+            <div>
+              <p class="text-xs text-gray-400 font-semibold uppercase">Appointment Type</p>
+              <p class="text-sm font-medium text-gray-800">{{ selectedTypeName }}</p>
+            </div>
+          </div>
+
+          <!-- Date & Time -->
+          <div class="flex items-start gap-3">
+            <span class="material-symbols-outlined text-royal text-xl mt-0.5">calendar_month</span>
+            <div>
+              <p class="text-xs text-gray-400 font-semibold uppercase">Date &amp; Time</p>
+              <span class="inline-block mt-0.5 px-3 py-1 text-sm font-bold rounded-full"
+                    style="background:#FEF3C7;color:#92400E">
+                {{ selectedDateLabel }} at {{ selectedSlot }}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <p class="text-xs text-gray-400 mt-3">
+          The appointment will be saved with status <strong>Scheduled</strong>.
+        </p>
+
+        <p *ngIf="saveError"
+           class="mt-3 text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+          {{ saveError }}
+        </p>
+      </ng-container>
+
+    </div>
+    <!-- ─── End body ──────────────────────────────────────────── -->
+
+    <!-- Footer -->
+    <div class="flex items-center justify-between px-6 py-4 border-t bg-white">
+      <button *ngIf="step === 1" type="button" (click)="close()"
+              class="bg-gray-100 text-gray-700 py-2 px-5 rounded-lg text-sm font-semibold hover:bg-gray-200 transition-colors">
+        Cancel
+      </button>
+      <button *ngIf="step > 1" type="button" (click)="step = step === 3 ? 2 : 1; saveError = ''"
+              class="bg-gray-100 text-gray-700 py-2 px-5 rounded-lg text-sm font-semibold hover:bg-gray-200 transition-colors">
+        Back
+      </button>
+
+      <button *ngIf="step < 3" type="button"
+              [disabled]="(step === 1 && !step1Valid) || (step === 2 && !step2Valid)"
+              (click)="step === 1 ? goToStep2() : (step = 3)"
+              class="bg-royal text-white py-2 px-6 rounded-lg text-sm font-semibold hover:bg-[#2c5282] disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
+        Next
+      </button>
+
+      <button *ngIf="step === 3" type="button"
+              [disabled]="isSaving"
+              (click)="confirmBooking()"
+              class="bg-green-600 text-white py-2 px-6 rounded-lg text-sm font-semibold hover:bg-green-700 disabled:opacity-50 transition-colors flex items-center gap-2">
+        <span *ngIf="isSaving" class="material-symbols-outlined animate-spin text-base leading-none">progress_activity</span>
+        {{ isSaving ? 'Booking...' : 'Confirm booking' }}
+      </button>
+    </div>
+
+  </div>
+</div>

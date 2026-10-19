@@ -1,0 +1,88 @@
+import { ManageableLookupCategory } from '../../types/system-lookup';
+
+export const LOOKUP_REGISTRY: Omit<ManageableLookupCategory, 'count'>[] = [
+  {
+    categoryKey:  'diagnosis_type',
+    displayName:  'Teeth diagnosis',
+    description:  "Used in: patient file → today's visit → diagnosis dropdown",
+    source:       'system_lookups',
+    readOnly:     false,
+  },
+  {
+    categoryKey:  'treatment_type',
+    displayName:  'Treatment types',
+    description:  "Used in: patient file → today's visit → treatment dropdown",
+    source:       'system_lookups',
+    readOnly:     false,
+  },
+  {
+    categoryKey:  'cancellation_reason',
+    displayName:  'Cancellation reasons',
+    description:  'Used in: appointment cancellation modal',
+    source:       'system_lookups',
+    readOnly:     false,
+  },
+  {
+    categoryKey:  'doctor_specialty',
+    displayName:  'Doctor specialties',
+    description:  'Used in: doctor profile · lab request consultant filter',
+    source:       'system_lookups',
+    readOnly:     false,
+  },
+  {
+    categoryKey:  'contact_type',
+    displayName:  'Contact types',
+    description:  'Used in: user contacts · patient contacts · registration form',
+    source:       'system_lookups',
+    readOnly:     false,
+  },
+  {
+    categoryKey:  'inventory_category',
+    displayName:  'Inventory categories',
+    description:  'Used in: inventory → register / deposit / withdraw',
+    source:       'system_lookups',
+    readOnly:     false,
+  },
+  {
+    categoryKey:  'inventory_unit',
+    displayName:  'Inventory units',
+    description:  'Used in: inventory item registration → unit of measure',
+    source:       'system_lookups',
+    readOnly:     false,
+  },
+  {
+    categoryKey:  'ticket_priority',
+    displayName:  'Ticket priorities',
+    description:  'Used in: support tickets → priority dropdown',
+    source:       'system_lookups',
+    readOnly:     false,
+  },
+  {
+    categoryKey:  'lab_service_type',
+    displayName:  'Lab service categories',
+    description:  'Used in: lab requests → service type',
+    source:       'system_lookups',
+    readOnly:     false,
+  },
+  {
+    categoryKey:  'role',
+    displayName:  'System roles',
+    description:  'RBAC roles. Managed via seed migration — read-only here.',
+    source:       'roles',
+    readOnly:     true,
+  },
+  {
+    categoryKey:  'appointment_type',
+    displayName:  'Appointment types',
+    description:  'Used in: receptionist booking. Edits also change duration.',
+    source:       'appointment_type',
+    readOnly:     false,
+  },
+  {
+    categoryKey:  'ticket_type',
+    displayName:  'Ticket categories',
+    description:  'Used in: support tickets → category dropdown',
+    source:       'ticket_type',
+    readOnly:     false,
+  },
+];

@@ -1,0 +1,459 @@
+<div>
+
+  <!-- ── Toolbar ──────────────────────────────────────────────────── -->
+  <div class="flex items-center gap-3 mb-4" style="width: calc(66.667% - 12px)">
+    <div class="relative flex-1">
+      <span class="absolute inset-y-0 left-0 flex items-center pl-3">
+        <span class="material-symbols-outlined text-xl text-gray-400">search</span>
+      </span>
+      <input type="text" placeholder="Search by Item, Requester, or ID..."
+             [(ngModel)]="searchTerm" (input)="onSearchChange()"
+             class="w-full pl-10 pr-4 py-2 border border-gray-300 bg-white text-gray-900 rounded-lg shadow-sm focus:ring-2 focus:ring-gold/50 outline-none" />
+    </div>
+
+    <!-- Filter button -->
+    <div class="relative shrink-0">
+      <button type="button"
+              (click)="filterPopupOpen ? closeFilterPopup() : openFilterPopup()"
+              [class]="'relative flex items-center justify-center py-2 px-2.5 rounded-lg border transition-colors ' + (filterPopupOpen || hasActiveFilters ? 'bg-[#E6F1FB] border-[#378ADD] text-[#185FA5]' : 'bg-white border-gray-300 text-gray-700 hover:bg-[#E6F1FB] hover:border-[#378ADD] hover:text-[#185FA5]')">
+        <svg width="15" height="15" viewBox="0 0 16 16" fill="none">
+          <path d="M2 4h12M4 8h8M6 12h4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+        </svg>
+        <span *ngIf="hasActiveFilters"
+              class="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-[#378ADD]"
+              style="border:1.5px solid #e2e8f0"></span>
+      </button>
+    </div>
+
+    <span class="text-sm font-medium text-gray-500 shrink-0">Total: {{ totalItems }}</span>
+  </div>
+
+  <div class="flex gap-6 items-start">
+
+    <!-- ── Left Panel: Table + Pagination ───────────────────────── -->
+    <div class="w-2/3 bg-white rounded-lg shadow-md overflow-hidden">
+      <div>
+        <table class="w-full" style="table-layout:fixed">
+          <colgroup>
+            <col style="width:20%"> <!-- Item Details -->
+            <col style="width:7%">  <!-- QTY -->
+            <col style="width:14%"> <!-- Requested By -->
+            <col style="width:18%"> <!-- Date -->
+            <col style="width:23%"> <!-- Modification Date -->
+            <col style="width:18%"> <!-- Status -->
+          </colgroup>
+          <thead class="bg-gray-50">
+            <tr>
+              <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Item Details</th>
+              <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">QTY</th>
+              <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Requested By</th>
+              <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+              <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Modification Date</th>
+              <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+            </tr>
+          </thead>
+          <tbody class="bg-white divide-y divide-gray-200">
+            <tr *ngFor="let req of pagedRequests"
+                (click)="selectedRequest = selectedRequest?.id === req.id ? null : req"
+                [class]="'cursor-pointer transition-colors ' + (selectedRequest?.id === req.id ? 'bg-blue-50' : 'hover:bg-gray-50')">
+              <td class="px-3 py-3">
+                <div class="font-medium text-gray-900">{{ resolvedItemName(req) }}</div>
+                <div class="text-xs text-gray-500 font-mono">{{ resolvedItemId(req) }}</div>
+              </td>
+              <td class="px-3 py-3 whitespace-nowrap text-gray-700 font-semibold">{{ req.requestedQuantity }}</td>
+              <td class="px-3 py-3 whitespace-nowrap text-gray-500">
+                <div class="font-medium">{{ req.requestedBy }}</div>
+                <div class="text-[10px] text-gray-400 font-bold uppercase tracking-tighter">{{ req.requesterRole }}</div>
+              </td>
+              <td class="px-3 py-3 text-gray-500">{{ formatDateTime(req.requestDate) }}</td>
+              <td class="px-3 py-3 text-gray-500">{{ formatDateTime(req.modificationDate) }}</td>
+              <td class="px-3 py-3 whitespace-nowrap">
+                <span [class]="'px-2 py-1 rounded-full text-xs font-semibold ' + statusClass(req.status)">
+                  {{ req.status }}
+                </span>
+              </td>
+            </tr>
+            <tr *ngIf="pagedRequests.length === 0">
+              <td colspan="6" class="px-6 py-10 text-center text-gray-500">No item requests found.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Pagination bar -->
+      <div class="flex items-center justify-between px-4 py-1.5 border-t text-xs text-gray-600">
+        <div class="flex items-center gap-2">
+          <span class="text-gray-500">Rows:</span>
+          <select [ngModel]="pageSize" (ngModelChange)="onPageSizeChange($event)"
+                  class="border border-gray-300 rounded px-2 py-1 text-sm bg-white outline-none focus:ring-2 focus:ring-gold/50">
+            <option *ngFor="let s of pageSizeOptions" [value]="s">{{ s }}</option>
+          </select>
+        </div>
+        <div class="flex items-center gap-1">
+          <span class="text-gray-500 text-xs">{{ pageRangeStart }}–{{ pageRangeEnd }} of {{ totalItems }}</span>
+          <button (click)="goToPage(currentPage - 1)" [disabled]="currentPage <= 1"
+                  class="p-1 rounded hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed">
+            <span class="material-symbols-outlined text-base leading-none">chevron_left</span>
+          </button>
+          <span class="font-medium text-xs">{{ currentPage }} / {{ totalPages }}</span>
+          <button (click)="goToPage(currentPage + 1)" [disabled]="currentPage >= totalPages"
+                  class="p-1 rounded hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed">
+            <span class="material-symbols-outlined text-base leading-none">chevron_right</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Right Panel: Selected Request Info ───────────────────────── -->
+    <div class="w-1/3 bg-white p-6 rounded-lg shadow-md">
+      <h2 class="text-lg font-bold text-royal mb-4 border-b pb-2">Selected Request Info</h2>
+
+      <div *ngIf="selectedRequest; else emptyState">
+        <div class="flex justify-between items-start mb-6">
+          <h3 class="text-xl font-bold text-royal">{{ resolvedItemName(selectedRequest) }}</h3>
+          <span [class]="'text-xs font-semibold py-1 px-3 rounded-full ' + statusClass(selectedRequest.status)">
+            {{ selectedRequest.status }}
+          </span>
+        </div>
+
+        <div class="grid grid-cols-2 gap-x-6 gap-y-4 text-sm mb-6">
+          <div class="col-span-2">
+            <label class="block text-xs font-medium text-gray-500">Requested By</label>
+            <p class="text-gray-800">{{ selectedRequest.requestedBy }}</p>
+            <p class="text-[10px] text-gray-400 font-bold uppercase tracking-tighter">{{ selectedRequest.requesterRole }}</p>
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-gray-500">Quantity Requested</label>
+            <p class="text-gray-800 font-bold text-lg">{{ selectedRequest.requestedQuantity }}</p>
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-gray-500">Quantity Approved</label>
+            <p [class]="'font-bold text-lg ' + (selectedRequest.approvedQuantity != null ? 'text-gray-800' : 'text-gray-400')">
+              {{ approvedQuantityDisplay }}
+            </p>
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-gray-500">Request Date</label>
+            <p class="text-gray-800">{{ formatDateTime(selectedRequest.requestDate) }}</p>
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-gray-500">Modification Date</label>
+            <p class="text-gray-800">{{ formatDateTime(selectedRequest.modificationDate) }}</p>
+          </div>
+        </div>
+
+        <div *ngIf="selectedRequest.notes" class="mb-6">
+          <label class="block text-xs font-medium text-gray-500 mb-1">Notes</label>
+          <div class="bg-gray-50 p-3 rounded-lg border border-gray-100 text-sm text-gray-600">
+            {{ selectedRequest.notes }}
+          </div>
+        </div>
+
+        <div *ngIf="selectedRequest.status === 'Rejected' && selectedRequest.rejectionFeedback" class="mb-6">
+          <label class="block text-xs font-medium text-gray-500 mb-1">Rejection Feedback</label>
+          <div class="bg-red-50 p-3 rounded-lg border border-red-100 text-sm text-red-700 whitespace-pre-wrap">
+            {{ selectedRequest.rejectionFeedback }}
+          </div>
+        </div>
+
+        <!-- Action error banner -->
+        <div *ngIf="actionError" class="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+          {{ actionError }}
+        </div>
+
+        <!-- Approve / Reject actions (Pending only) -->
+        <div *ngIf="selectedRequest.status === 'Pending'" class="flex gap-3 pt-4 border-t">
+          <button (click)="openApproveModal()"
+                  [disabled]="isLoading"
+                  class="flex-1 bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white font-bold py-2 rounded-lg transition-colors flex items-center justify-center gap-2 text-sm">
+            <span class="material-symbols-outlined text-base">check_circle</span>
+            Approve
+          </button>
+          <button (click)="openRejectModal()"
+                  [disabled]="isLoading"
+                  class="flex-1 bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white font-bold py-2 rounded-lg transition-colors flex items-center justify-center gap-2 text-sm">
+            <span class="material-symbols-outlined text-base">cancel</span>
+            Reject
+          </button>
+        </div>
+      </div>
+
+      <ng-template #emptyState>
+        <div class="flex items-center justify-center py-8 text-gray-400">
+          <p>Select a request to see details</p>
+        </div>
+      </ng-template>
+    </div>
+
+  </div>
+
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════════
+     REJECT FEEDBACK MODAL
+     ══════════════════════════════════════════════════════════════════ -->
+<div *ngIf="showRejectModal" class="fixed inset-0 z-50 flex items-center justify-center" style="background:rgba(0,0,0,0.45)">
+  <div class="bg-white rounded-xl shadow-2xl flex flex-col" style="width:480px;max-height:90vh">
+    <div class="flex items-center justify-between px-6 py-4 border-b">
+      <div class="flex items-center gap-2">
+        <span class="material-symbols-outlined text-xl text-red-500">cancel</span>
+        <h2 class="text-lg font-bold text-gray-800">Reject Request</h2>
+      </div>
+      <button (click)="closeRejectModal()" class="text-gray-400 hover:text-gray-600">
+        <span class="material-symbols-outlined">close</span>
+      </button>
+    </div>
+    <div class="px-6 py-4 overflow-y-auto flex-1 space-y-4">
+      <p class="text-sm text-gray-600">
+        Rejecting request for <span class="font-semibold text-gray-800">{{ selectedRequest?.itemName }}</span>
+        by <span class="font-semibold text-gray-800">{{ selectedRequest?.requestedBy }}</span>.
+        Your feedback will be sent as a reply to the requester.
+      </p>
+      <div>
+        <label class="block text-xs font-medium text-gray-500 mb-1">Feedback <span class="text-red-500">*</span></label>
+        <textarea [(ngModel)]="rejectFeedback"
+                  (ngModelChange)="rejectFeedbackError = false"
+                  rows="5"
+                  placeholder="Explain why this request is being rejected…"
+                  [class]="'w-full border rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-gold/50 resize-none ' + (rejectFeedbackError ? 'border-red-400' : 'border-gray-300')"></textarea>
+        <p *ngIf="rejectFeedbackError" class="text-xs text-red-500 mt-1">Feedback is required before rejecting.</p>
+      </div>
+    </div>
+    <div class="flex justify-end gap-3 px-6 py-4 border-t">
+      <button (click)="closeRejectModal()" class="px-4 py-2 rounded-lg border border-gray-300 text-sm text-gray-700 hover:bg-gray-50">Cancel</button>
+      <button (click)="confirmReject()"
+              class="px-4 py-2 rounded-lg text-sm font-medium text-white bg-red-600 hover:bg-red-700">
+        Send &amp; Reject
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════════
+     APPROVE QUANTITY CONFIRMATION MODAL
+     ══════════════════════════════════════════════════════════════════ -->
+<div *ngIf="showApproveModal" class="fixed inset-0 z-50 flex items-center justify-center" style="background:rgba(0,0,0,0.45)">
+  <div class="bg-white rounded-xl shadow-2xl flex flex-col" style="width:480px;max-height:90vh">
+
+    <!-- Header -->
+    <div class="flex items-center justify-between px-6 py-4 border-b">
+      <div class="flex items-center gap-2">
+        <span class="material-symbols-outlined text-xl text-green-600">check_circle</span>
+        <h2 class="text-lg font-bold text-gray-800">Confirm Approval</h2>
+      </div>
+      <button (click)="closeApproveModal()" class="text-gray-400 hover:text-gray-600">
+        <span class="material-symbols-outlined">close</span>
+      </button>
+    </div>
+
+    <!-- Body -->
+    <div class="px-6 py-4 overflow-y-auto flex-1 space-y-4" *ngIf="approveDialogData">
+
+      <!-- Success banner — shown briefly before auto-close -->
+      <div *ngIf="approveSuccess"
+           class="flex items-center gap-2 rounded-lg px-3 py-3 text-sm font-medium bg-green-50 border border-green-200 text-green-800">
+        <span class="material-symbols-outlined text-lg shrink-0">check_circle</span>
+        <span>{{ approveSuccessMessage }}</span>
+      </div>
+
+      <div class="space-y-1">
+        <p class="text-sm text-gray-600">
+          <span class="font-medium text-gray-800">Item:</span>
+          {{ approveDialogData.itemName }}
+        </p>
+        <p class="text-sm text-gray-600">
+          <span class="font-medium text-gray-800">Requested qty:</span>
+          {{ approveDialogData.requestedQuantity }}
+        </p>
+      </div>
+      <div>
+        <label class="block text-xs font-medium text-gray-500 mb-1">
+          Approved Quantity <span class="text-red-500">*</span>
+        </label>
+        <input type="number"
+               [(ngModel)]="approvedQuantity"
+               min="1"
+               [class]="'w-full border rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-gold/50 '
+                        + ((approvedQuantity !== null && !isApproveQuantityValid) || !!stockError ? 'border-red-400' : 'border-gray-300')" />
+        <p *ngIf="approvedQuantity !== null && !isApproveQuantityValid"
+           class="text-xs text-red-500 mt-1">Quantity must be at least 1.</p>
+        <!-- Live available stock hint — always visible while dialog is open -->
+        <p *ngIf="availableStock !== null && !stockError"
+           class="text-xs text-gray-400 mt-1">Available stock: {{ availableStock }} unit{{ availableStock === 1 ? '' : 's' }}</p>
+      </div>
+
+      <!-- Blocking stock error — disables the Confirm button until resolved -->
+      <div *ngIf="stockError"
+           class="flex items-start gap-2 rounded-lg px-3 py-2 text-sm bg-red-50 border border-red-200 text-red-700">
+        <span class="material-symbols-outlined text-base shrink-0 mt-0.5">error</span>
+        <span>{{ stockError }}</span>
+      </div>
+
+      <!-- API error banner — shown inline so manager can retry without re-opening -->
+      <div *ngIf="approvalModalError && !approveSuccess"
+           class="flex items-start gap-2 rounded-lg px-3 py-2 text-sm bg-red-50 border border-red-200 text-red-700">
+        <span class="material-symbols-outlined text-base shrink-0 mt-0.5">error</span>
+        <span>{{ approvalModalError }}</span>
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <div class="flex justify-end gap-3 px-6 py-4 border-t">
+      <button (click)="closeApproveModal()"
+              [disabled]="isLoading"
+              class="px-4 py-2 rounded-lg border border-gray-300 text-sm text-gray-700 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed">
+        Cancel
+      </button>
+      <button (click)="confirmApprove()"
+              [disabled]="!isApproveQuantityValid || !!stockError || isLoading"
+              class="px-4 py-2 rounded-lg text-sm font-medium text-white bg-green-600 hover:bg-green-700 disabled:opacity-40">
+        <span *ngIf="isLoading" class="material-symbols-outlined text-sm animate-spin mr-1">refresh</span>
+        Confirm Approval
+      </button>
+    </div>
+
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════════
+     FILTER MODAL
+     ══════════════════════════════════════════════════════════════════ -->
+<div *ngIf="filterPopupOpen" class="fixed inset-0 z-50 flex items-center justify-center" style="background:rgba(0,0,0,0.45)" (click)="closeFilterPopup()">
+  <div class="bg-white rounded-xl shadow-2xl flex flex-col" style="width:480px;max-height:90vh" (click)="$event.stopPropagation()">
+    <div class="flex items-center justify-between px-6 py-4 border-b">
+      <div class="flex items-center gap-2">
+        <svg width="18" height="18" viewBox="0 0 16 16" fill="none">
+          <path d="M2 4h12M4 8h8M6 12h4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+        </svg>
+        <h2 class="text-lg font-bold text-gray-800">Filters</h2>
+      </div>
+      <button (click)="closeFilterPopup()" class="text-gray-400 hover:text-gray-600">
+        <span class="material-symbols-outlined">close</span>
+      </button>
+    </div>
+    <div class="px-6 py-4 overflow-y-auto flex-1">
+
+      <!-- Status -->
+      <div class="mb-3.5">
+        <div class="text-[11px] font-medium text-gray-500 uppercase tracking-wider mb-1.5">Status</div>
+        <select [(ngModel)]="draft.status"
+                class="w-full rounded-md px-2 text-[12px] bg-gray-50 text-gray-800 outline-none"
+                style="height:30px;border:0.5px solid #d1d5db">
+          <option value="All">All</option>
+          <option value="Pending">Pending</option>
+          <option value="Approved">Approved</option>
+          <option value="Rejected">Rejected</option>
+        </select>
+      </div>
+
+      <hr style="border:none;border-top:0.5px solid #e5e7eb;margin:0 0 14px 0">
+
+      <!-- Modification date section -->
+      <div class="mb-3.5">
+        <div class="text-[11px] font-medium text-gray-500 uppercase tracking-wider mb-1.5">Modification date</div>
+        <div class="rounded-md p-2.5" style="background:#f3f4f6">
+
+          <div class="text-[11px] text-gray-500 font-medium mb-1.5">Quick select</div>
+          <div class="flex flex-wrap gap-1.5 mb-2.5">
+            <button *ngFor="let chip of modChips" type="button"
+                    (click)="pickModChip(chip.value)"
+                    [class]="'px-2.5 py-1 text-[11px] rounded-full border transition-colors cursor-pointer ' + (draft.modChip === chip.value ? 'bg-[#E6F1FB] border-[#378ADD] text-[#0C447C] font-medium' : 'bg-white border-gray-300 text-gray-700 hover:border-[#378ADD] hover:text-[#185FA5] hover:bg-[#E6F1FB]')">
+              {{ chip.label }}
+            </button>
+          </div>
+
+          <div class="flex rounded-md overflow-hidden mb-2.5" style="border:0.5px solid #d1d5db">
+            <button type="button" (click)="draft.modMode = 'specific'"
+                    [class]="'flex-1 text-[11px] border-none cursor-pointer transition-colors ' + (draft.modMode === 'specific' ? 'bg-[#1D3557] text-white' : 'bg-white text-gray-500 hover:bg-gray-50')"
+                    style="height:27px">Specific date</button>
+            <button type="button" (click)="draft.modMode = 'range'"
+                    [class]="'flex-1 text-[11px] border-none cursor-pointer transition-colors ' + (draft.modMode === 'range' ? 'bg-[#1D3557] text-white' : 'bg-white text-gray-500 hover:bg-gray-50')"
+                    style="height:27px">Date range</button>
+          </div>
+
+          <div *ngIf="draft.modMode === 'specific'">
+            <label class="block text-[10px] text-gray-500 mb-1">Select date</label>
+            <input type="date" [(ngModel)]="draft.modDate" (ngModelChange)="onModDateInput()"
+                   class="w-full rounded-md px-1.5 text-[11px] bg-white text-gray-800 outline-none"
+                   style="height:28px;border:0.5px solid #d1d5db">
+          </div>
+
+          <div *ngIf="draft.modMode === 'range'" class="flex gap-1.5">
+            <div class="flex-1">
+              <label class="block text-[10px] text-gray-500 mb-1">From</label>
+              <input type="date" [(ngModel)]="draft.modFrom" (ngModelChange)="onModDateInput()"
+                     class="w-full rounded-md px-1.5 text-[11px] bg-white text-gray-800 outline-none"
+                     style="height:28px;border:0.5px solid #d1d5db">
+            </div>
+            <div class="flex-1">
+              <label class="block text-[10px] text-gray-500 mb-1">To</label>
+              <input type="date" [(ngModel)]="draft.modTo" (ngModelChange)="onModDateInput()"
+                     class="w-full rounded-md px-1.5 text-[11px] bg-white text-gray-800 outline-none"
+                     style="height:28px;border:0.5px solid #d1d5db">
+            </div>
+          </div>
+
+          <div class="flex items-center gap-1.5 mt-2.5 pt-2.5" style="border-top:0.5px solid #d1d5db">
+            <input type="checkbox" [(ngModel)]="draft.includeNotModified" id="req-notMod"
+                   style="accent-color:#378ADD;cursor:pointer">
+            <label for="req-notMod" class="text-[12px] text-gray-700 cursor-pointer">Include requests not yet modified</label>
+          </div>
+        </div>
+      </div>
+
+      <hr style="border:none;border-top:0.5px solid #e5e7eb;margin:0 0 14px 0">
+
+      <!-- Request date section -->
+      <div class="mb-1">
+        <div class="text-[11px] font-medium text-gray-500 uppercase tracking-wider mb-1.5">Request date</div>
+        <div class="rounded-md p-2.5" style="background:#f3f4f6">
+
+          <div class="text-[11px] text-gray-500 font-medium mb-1.5">Quick select</div>
+          <div class="flex flex-wrap gap-1.5 mb-2.5">
+            <button *ngFor="let chip of reqChips" type="button"
+                    (click)="pickReqChip(chip.value)"
+                    [class]="'px-2.5 py-1 text-[11px] rounded-full border transition-colors cursor-pointer ' + (draft.reqChip === chip.value ? 'bg-[#E6F1FB] border-[#378ADD] text-[#0C447C] font-medium' : 'bg-white border-gray-300 text-gray-700 hover:border-[#378ADD] hover:text-[#185FA5] hover:bg-[#E6F1FB]')">
+              {{ chip.label }}
+            </button>
+          </div>
+
+          <div class="flex rounded-md overflow-hidden mb-2.5" style="border:0.5px solid #d1d5db">
+            <button type="button" (click)="draft.reqMode = 'specific'"
+                    [class]="'flex-1 text-[11px] border-none cursor-pointer transition-colors ' + (draft.reqMode === 'specific' ? 'bg-[#1D3557] text-white' : 'bg-white text-gray-500 hover:bg-gray-50')"
+                    style="height:27px">Specific date</button>
+            <button type="button" (click)="draft.reqMode = 'range'"
+                    [class]="'flex-1 text-[11px] border-none cursor-pointer transition-colors ' + (draft.reqMode === 'range' ? 'bg-[#1D3557] text-white' : 'bg-white text-gray-500 hover:bg-gray-50')"
+                    style="height:27px">Date range</button>
+          </div>
+
+          <div *ngIf="draft.reqMode === 'specific'">
+            <label class="block text-[10px] text-gray-500 mb-1">Select date</label>
+            <input type="date" [(ngModel)]="draft.reqDate" (ngModelChange)="onReqDateInput()"
+                   class="w-full rounded-md px-1.5 text-[11px] bg-white text-gray-800 outline-none"
+                   style="height:28px;border:0.5px solid #d1d5db">
+          </div>
+
+          <div *ngIf="draft.reqMode === 'range'" class="flex gap-1.5">
+            <div class="flex-1">
+              <label class="block text-[10px] text-gray-500 mb-1">From</label>
+              <input type="date" [(ngModel)]="draft.reqFrom" (ngModelChange)="onReqDateInput()"
+                     class="w-full rounded-md px-1.5 text-[11px] bg-white text-gray-800 outline-none"
+                     style="height:28px;border:0.5px solid #d1d5db">
+            </div>
+            <div class="flex-1">
+              <label class="block text-[10px] text-gray-500 mb-1">To</label>
+              <input type="date" [(ngModel)]="draft.reqTo" (ngModelChange)="onReqDateInput()"
+                     class="w-full rounded-md px-1.5 text-[11px] bg-white text-gray-800 outline-none"
+                     style="height:28px;border:0.5px solid #d1d5db">
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+    <div class="flex justify-between gap-3 px-6 py-4 border-t">
+      <button (click)="clearAllFilters()" class="px-4 py-2 rounded-lg border border-gray-300 text-sm text-gray-700 hover:bg-gray-50">Clear all</button>
+      <button (click)="applyFilters()" class="px-4 py-2 rounded-lg text-sm font-medium bg-royal text-white hover:bg-[#2c5282]">Apply</button>
+    </div>
+  </div>
+</div>

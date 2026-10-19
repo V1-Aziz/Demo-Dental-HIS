@@ -1,0 +1,96 @@
+<div class="modal-backdrop" (click)="cancel()">
+  <div class="modal-shell" (click)="$event.stopPropagation()">
+
+    <header class="modal-header">
+      <div>
+        <h3 class="modal-title">Upload Screening</h3>
+        <p class="modal-sub">
+          {{ selectedAppointment.appointment_time }} · Dr. {{ selectedAppointment.doctor_name }} · Clinic {{ selectedAppointment.clinic_name }}
+        </p>
+      </div>
+      <button type="button" class="close-btn" (click)="cancel()" aria-label="Close">×</button>
+    </header>
+
+    <div class="modal-body">
+
+      <!-- Appointment picker — only rendered when there's more than one today -->
+      <div *ngIf="hasMultipleAppointments" class="appt-picker">
+        <label for="apptPicker" class="appt-label">Attach to appointment</label>
+        <select id="apptPicker" class="appt-select" [(ngModel)]="selectedAppointmentId">
+          <option *ngFor="let a of todaysAppointments" [ngValue]="a.appointment_id">
+            {{ a.appointment_time }} · Dr. {{ a.doctor_name }} · {{ a.clinic_name }} · {{ a.status }}
+          </option>
+        </select>
+      </div>
+
+      <!-- Dropzone -->
+      <label
+        class="dropzone"
+        (drop)="onDrop($event)"
+        (dragover)="onDragOver($event)"
+      >
+        <input
+          type="file"
+          multiple
+          accept="image/jpeg,image/png"
+          class="hidden-input"
+          (change)="onFilesChosen($event)"
+        />
+        <span class="material-symbols-outlined dz-icon">cloud_upload</span>
+        <div class="dz-text">
+          <strong>Click to browse</strong> or drag and drop images here
+        </div>
+        <div class="dz-sub">JPEG / PNG · max 10 MB each · up to 10 files per upload</div>
+      </label>
+
+      <div *ngIf="pending.length > 0" class="counter-row">
+        <span>{{ pending.length }} / 10 files · {{ totalSizeMb }} MB</span>
+      </div>
+
+      <!-- Per-file cards -->
+      <div *ngFor="let p of pending; let i = index; trackBy: trackByRef" class="file-card">
+        <img [src]="p.previewUrl" [alt]="p.file.name" class="file-thumb" />
+        <div class="file-fields">
+          <div class="file-name-row">
+            <span class="file-name">{{ p.file.name }}</span>
+            <button type="button" class="remove-btn" (click)="removeEntry(i)" aria-label="Remove">
+              <span class="material-symbols-outlined">delete</span>
+            </button>
+          </div>
+
+          <div *ngIf="p.sizeError || p.typeError" class="file-err">{{ p.sizeError || p.typeError }}</div>
+
+          <label class="field">
+            <span class="label-text">Image Type *</span>
+            <select [(ngModel)]="p.imageType" (change)="onTypeChange(p)">
+              <option value="">— select —</option>
+              <option *ngFor="let t of typeOptions" [value]="t">{{ t }}</option>
+            </select>
+          </label>
+
+          <label class="field">
+            <span class="label-text">Notes (optional, max 500 chars)</span>
+            <textarea rows="2" maxlength="500" [(ngModel)]="p.notes"></textarea>
+          </label>
+        </div>
+      </div>
+
+      <div *ngIf="globalError" class="global-error">{{ globalError }}</div>
+
+    </div>
+
+    <footer class="modal-footer">
+      <span class="footer-note">
+        <span class="material-symbols-outlined">info</span>
+        Dr. {{ selectedAppointment.doctor_name }} &amp; assigned student will be notified on upload
+      </span>
+      <div class="footer-actions">
+        <button type="button" class="btn btn-secondary" (click)="cancel()" [disabled]="submitting">Cancel</button>
+        <button type="button" class="btn btn-primary" (click)="submit()" [disabled]="!canSubmit">
+          {{ submitting ? 'Uploading…' : 'Upload' }}
+        </button>
+      </div>
+    </footer>
+
+  </div>
+</div>

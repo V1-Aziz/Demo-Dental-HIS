@@ -1,0 +1,63 @@
+<div *ngIf="loading" class="flex items-center justify-center h-48 text-gray-400">
+  <span class="material-symbols-outlined animate-spin text-3xl mr-2">progress_activity</span>
+  Loading patients…
+</div>
+
+<div *ngIf="error" class="bg-red-50 border border-red-200 text-red-700 rounded-lg p-4">{{ error }}</div>
+
+<ng-container *ngIf="!loading && !error">
+  <!-- Search bar -->
+  <div class="mb-4">
+    <div class="relative max-w-sm">
+      <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xl">search</span>
+      <input
+        type="text"
+        placeholder="Search by name or file number…"
+        [(ngModel)]="searchTerm"
+        (input)="onSearch()"
+        class="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-royal/30"
+      />
+    </div>
+  </div>
+
+  <!-- Empty state -->
+  <div *ngIf="filtered.length === 0" class="flex flex-col items-center justify-center py-16 text-gray-400 gap-2">
+    <span class="material-symbols-outlined text-4xl">folder_open</span>
+    <p class="text-sm font-medium">No patients with same-day appointments</p>
+    <p class="text-xs text-gray-400">Only patients scheduled for today appear here.</p>
+  </div>
+
+  <!-- Table -->
+  <div *ngIf="filtered.length > 0" class="bg-white rounded-xl shadow-sm overflow-hidden">
+    <table class="w-full text-sm">
+      <thead class="bg-gray-50 text-gray-600 text-xs uppercase tracking-wide">
+        <tr>
+          <th class="text-left px-5 py-3">Patient name</th>
+          <th class="text-left px-5 py-3">Gender</th>
+          <th class="text-left px-5 py-3">Age</th>
+          <th class="text-right px-5 py-3">Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let p of filtered"
+            class="border-t border-gray-50 hover:bg-gray-50 transition-colors">
+          <td class="px-5 py-3 font-medium text-gray-800">
+            {{ p.first_name }} {{ p.last_name }}
+            <span *ngIf="p.file_number" class="ml-2 text-xs text-gray-400">#{{ p.file_number }}</span>
+          </td>
+          <td class="px-5 py-3 text-gray-600">{{ p.gender }}</td>
+          <td class="px-5 py-3 text-gray-600">{{ p.age }} yrs</td>
+          <td class="px-5 py-3 text-right">
+            <button
+              (click)="openPatient(p.patient_id)"
+              class="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-xs font-semibold bg-gold text-royal hover:bg-yellow-400 transition-colors"
+            >
+              <span class="material-symbols-outlined text-base">upload</span>
+              Upload patient screening
+            </button>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</ng-container>

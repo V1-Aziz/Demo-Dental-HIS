@@ -1,0 +1,127 @@
+<div class="space-y-8">
+
+  <!-- Today's Activities -->
+  <section>
+    <h2 class="text-xl font-semibold text-gray-700 mb-4">Today's Activities</h2>
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div class="bg-white rounded-lg shadow p-5 border-l-4 border-gold hover:-translate-y-1 transition-transform duration-200">
+        <h3 class="text-sm font-medium text-gray-500 mb-2">No. of Low Stock Items</h3>
+        <p class="text-3xl font-bold text-royal">8</p>
+      </div>
+      <div class="bg-white rounded-lg shadow p-5 border-l-4 border-gold hover:-translate-y-1 transition-transform duration-200">
+        <h3 class="text-sm font-medium text-gray-500 mb-2">No. of Inventory Requests</h3>
+        <p class="text-3xl font-bold text-royal">15</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Shortcuts -->
+  <section>
+    <h2 class="text-xl font-semibold text-gray-700 mb-4">Shortcuts</h2>
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <button (click)="goToInventory()"
+              class="bg-royal text-white text-left p-6 rounded-lg shadow-lg hover:shadow-xl hover:bg-[#2c5282] transition-all duration-300">
+        <h3 class="text-xl font-bold flex items-center justify-between">
+          Register new items
+          <span class="material-symbols-outlined text-2xl">arrow_forward</span>
+        </h3>
+      </button>
+      <button (click)="goToRequests()"
+              class="bg-gold text-royal text-left p-6 rounded-lg shadow-lg hover:shadow-xl hover:bg-[#c6922b] transition-all duration-300">
+        <h3 class="text-xl font-bold flex items-center justify-between">
+          Register requested items
+          <span class="material-symbols-outlined text-2xl">arrow_forward</span>
+        </h3>
+      </button>
+    </div>
+  </section>
+
+  <!-- Latest Activity -->
+  <section>
+    <h2 class="text-xl font-semibold text-gray-700 mb-4">Latest Inventory Activity</h2>
+    <div class="bg-white rounded-lg shadow-md overflow-hidden">
+      <table class="w-full" style="table-layout:fixed">
+        <colgroup>
+          <col style="width:28%"> <!-- Item -->
+          <col style="width:25%"> <!-- Action -->
+          <col style="width:10%"> <!-- Qty -->
+          <col style="width:22%"> <!-- When -->
+          <col style="width:15%"> <!-- By -->
+        </colgroup>
+        <thead class="bg-gray-50">
+          <tr>
+            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Item</th>
+            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Action</th>
+            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Qty</th>
+            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">When</th>
+            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">By</th>
+          </tr>
+        </thead>
+        <tbody class="bg-white divide-y divide-gray-200">
+
+          <!-- Loading -->
+          <tr *ngIf="isLoading">
+            <td colspan="5" class="px-6 py-10 text-center text-gray-400 text-sm">Loading...</td>
+          </tr>
+
+          <!-- Error -->
+          <tr *ngIf="loadError && !isLoading">
+            <td colspan="5" class="px-6 py-10 text-center text-sm">
+              <span class="text-red-500">{{ loadError }}</span>
+              <button (click)="loadLatestActivity()"
+                      class="ml-2 text-xs text-blue-600 hover:underline font-medium">Retry</button>
+            </td>
+          </tr>
+
+          <!-- Data rows -->
+          <ng-container *ngIf="!isLoading && !loadError">
+            <tr *ngFor="let row of latestActivity"
+                (click)="navigateToHistory(row)"
+                class="hover:bg-gray-50 transition-colors cursor-pointer">
+
+              <!-- Item -->
+              <td class="px-4 py-3" style="overflow:hidden">
+                <div class="text-sm font-medium text-gray-900 truncate">{{ row.item_name }}</div>
+                <div class="text-xs text-gray-400 truncate">{{ row.category }}</div>
+              </td>
+
+              <!-- Action badge -->
+              <td class="px-4 py-3 whitespace-nowrap">
+                <span [class]="'inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold ' + actionBadgeClass(row)">
+                  {{ actionLabel(row) }}
+                </span>
+              </td>
+
+              <!-- Qty -->
+              <td [class]="'px-4 py-3 text-sm whitespace-nowrap ' + qtyClass(row)">{{ qtyDisplay(row) }}</td>
+
+              <!-- When -->
+              <td class="px-4 py-3 text-sm text-gray-500 whitespace-nowrap">{{ formatWhen(row.occurred_at) }}</td>
+
+              <!-- By -->
+              <td class="px-4 py-3 text-sm text-gray-500" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
+                {{ row.performed_by_email }}
+              </td>
+            </tr>
+
+            <!-- Empty state -->
+            <tr *ngIf="latestActivity.length === 0">
+              <td colspan="5" class="px-6 py-10 text-center text-gray-500">No recent activity to display.</td>
+            </tr>
+          </ng-container>
+
+        </tbody>
+      </table>
+
+      <!-- View all -->
+      <div class="px-4 py-3 border-t text-right">
+        <button (click)="goToHistory()"
+                class="text-sm text-royal hover:text-gold font-medium transition-colors inline-flex items-center gap-1">
+          View all
+          <span class="material-symbols-outlined text-base leading-none">arrow_forward</span>
+        </button>
+      </div>
+    </div>
+  </section>
+
+</div>

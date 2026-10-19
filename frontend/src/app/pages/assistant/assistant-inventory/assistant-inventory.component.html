@@ -1,0 +1,337 @@
+<div>
+
+  <!-- ── Page-level success banner ────────────────────────────────── -->
+  <div *ngIf="successMessage"
+       class="mb-4 flex items-center gap-2 rounded-lg px-3 py-3 text-sm font-medium bg-green-50 border border-green-200 text-green-800">
+    <span class="material-symbols-outlined text-lg shrink-0">check_circle</span>
+    <span>{{ successMessage }}</span>
+  </div>
+
+  <!-- ── My Request History ────────────────────────────────────────── -->
+
+  <!-- Toolbar (aligns with left column width — matches Inventory page pattern) -->
+  <div class="flex items-center gap-3 mb-4" style="width: calc(66.667% - 12px)">
+    <div class="relative flex-1">
+      <span class="absolute inset-y-0 left-0 flex items-center pl-3">
+        <span class="material-symbols-outlined text-xl text-gray-400">search</span>
+      </span>
+      <input type="text" placeholder="Search by item or status..."
+             [(ngModel)]="searchTerm" (input)="onSearchChange()"
+             class="w-full pl-10 pr-4 py-2 border border-gray-300 bg-white text-gray-900 rounded-lg shadow-sm focus:ring-2 focus:ring-gold/50 outline-none" />
+    </div>
+
+    <!-- Filter button -->
+    <div class="relative shrink-0">
+      <button type="button"
+              (click)="filterPopupOpen ? closeFilterPopup() : openFilterPopup()"
+              [class]="'relative flex items-center justify-center py-2 px-2.5 rounded-lg border transition-colors ' + (filterPopupOpen || hasActiveFilters ? 'bg-[#E6F1FB] border-[#378ADD] text-[#185FA5]' : 'bg-white border-gray-300 text-gray-700 hover:bg-[#E6F1FB] hover:border-[#378ADD] hover:text-[#185FA5]')">
+        <svg width="15" height="15" viewBox="0 0 16 16" fill="none">
+          <path d="M2 4h12M4 8h8M6 12h4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+        </svg>
+        <span *ngIf="hasActiveFilters"
+              class="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-[#378ADD]"
+              style="border:1.5px solid #e2e8f0"></span>
+      </button>
+    </div>
+
+    <div class="flex items-center gap-2 shrink-0">
+      <span class="text-sm font-medium text-gray-500">Total: {{ totalItems }}</span>
+      <button (click)="openRequestModal()"
+              class="flex items-center gap-1 px-3 py-2 rounded-lg text-sm font-medium bg-royal text-white hover:bg-[#2c5282]">
+        <span class="material-symbols-outlined text-base leading-none">inventory_2</span>
+        Request New Item
+      </button>
+    </div>
+  </div>
+
+  <div class="flex gap-6 items-start">
+
+    <!-- ── Left: Table + Pagination ──────────────────────────────── -->
+    <div class="w-2/3 bg-white rounded-lg shadow-md overflow-hidden">
+      <div>
+        <table class="w-full" style="table-layout:fixed">
+          <colgroup>
+            <col style="width:28%"> <!-- Request Date -->
+            <col style="width:38%"> <!-- Item -->
+            <col style="width:12%"> <!-- QTY -->
+            <col style="width:22%"> <!-- Status -->
+          </colgroup>
+          <thead class="bg-gray-50">
+            <tr>
+              <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Request Date</th>
+              <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Item</th>
+              <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">QTY</th>
+              <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+            </tr>
+          </thead>
+          <tbody class="bg-white divide-y divide-gray-200">
+            <tr *ngIf="isLoadingHistory">
+              <td colspan="4" class="px-6 py-8 text-center text-gray-400">Loading...</td>
+            </tr>
+            <ng-container *ngIf="!isLoadingHistory">
+              <tr *ngFor="let req of pagedRequests"
+                  (click)="selectRequest(req)"
+                  [class]="'cursor-pointer transition-colors ' + (selectedRequest?.request_id === req.request_id ? 'bg-blue-50' : 'hover:bg-gray-50')">
+                <td class="px-3 py-3 text-gray-500 text-sm">{{ formatDateTime(req.request_date) }}</td>
+                <td class="px-3 py-3">
+                  <div class="font-medium text-gray-900 truncate">{{ req.item_name }}</div>
+                </td>
+                <td class="px-3 py-3 whitespace-nowrap text-gray-700 font-semibold text-sm">{{ req.requested_quantity }}</td>
+                <td class="px-3 py-3 whitespace-nowrap">
+                  <span [class]="'px-2 py-1 rounded-full text-xs font-semibold ' + statusClass(req.status)">
+                    {{ req.status }}
+                  </span>
+                </td>
+              </tr>
+              <tr *ngIf="pagedRequests.length === 0 && !isLoadingHistory">
+                <td colspan="4" class="px-6 py-10 text-center text-gray-500">No requests found.</td>
+              </tr>
+            </ng-container>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Pagination bar -->
+      <div class="flex items-center justify-between px-4 py-1.5 border-t text-xs text-gray-600">
+        <div class="flex items-center gap-2">
+          <span class="text-gray-500">Rows:</span>
+          <select [ngModel]="pageSize" (ngModelChange)="onPageSizeChange($event)"
+                  class="border border-gray-300 rounded px-2 py-1 text-sm bg-white outline-none focus:ring-2 focus:ring-gold/50">
+            <option *ngFor="let s of pageSizeOptions" [value]="s">{{ s }}</option>
+          </select>
+        </div>
+        <div class="flex items-center gap-1">
+          <span class="text-gray-500 text-xs">{{ pageRangeStart }}–{{ pageRangeEnd }} of {{ totalItems }}</span>
+          <button (click)="goToPage(currentPage - 1)" [disabled]="currentPage <= 1"
+                  class="p-1 rounded hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed">
+            <span class="material-symbols-outlined text-base leading-none">chevron_left</span>
+          </button>
+          <span class="font-medium text-xs">{{ currentPage }} / {{ totalPages }}</span>
+          <button (click)="goToPage(currentPage + 1)" [disabled]="currentPage >= totalPages"
+                  class="p-1 rounded hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed">
+            <span class="material-symbols-outlined text-base leading-none">chevron_right</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Right: Side Panel ──────────────────────────────────────── -->
+    <div class="w-1/3 bg-white p-6 rounded-lg shadow-md">
+      <h2 class="text-lg font-bold text-royal mb-4 border-b pb-2">Selected Request Info</h2>
+
+      <div *ngIf="selectedRequest; else emptyState">
+        <!-- Header: item name + status badge -->
+        <div class="flex justify-between items-start mb-6">
+          <h3 class="text-xl font-bold text-royal">{{ selectedRequest.item_name }}</h3>
+          <span [class]="'text-xs font-semibold py-1 px-3 rounded-full ' + statusClass(selectedRequest.status)">
+            {{ selectedRequest.status }}
+          </span>
+        </div>
+
+        <!-- Paired fields grid -->
+        <div class="grid grid-cols-2 gap-x-6 gap-y-4 text-sm mb-6">
+          <div>
+            <label class="block text-xs font-medium text-gray-500">Quantity Requested</label>
+            <p class="text-gray-800 font-bold text-lg">{{ selectedRequest.requested_quantity }}</p>
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-gray-500">Quantity Approved</label>
+            <p [class]="'font-bold text-lg ' + (selectedRequest.approved_quantity != null ? 'text-gray-800' : 'text-gray-400')">
+              {{ approvedQuantityDisplay }}
+            </p>
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-gray-500">Request Date</label>
+            <p class="text-gray-800">{{ formatDateTime(selectedRequest.request_date) }}</p>
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-gray-500">Modification Date</label>
+            <p class="text-gray-800">{{ formatDateTime(selectedRequest.modification_date) }}</p>
+          </div>
+        </div>
+
+        <!-- Reviewed By -->
+        <div *ngIf="selectedRequest.approver_name || selectedRequest.approver_email" class="mb-6">
+          <label class="block text-xs font-medium text-gray-500 mb-1">Reviewed By</label>
+          <div class="bg-gray-50 p-3 rounded-lg border border-gray-100 text-sm">
+            <p *ngIf="selectedRequest.approver_name" class="text-gray-800 font-medium">{{ selectedRequest.approver_name }}</p>
+            <p *ngIf="selectedRequest.approver_email" class="text-gray-500 text-xs">{{ selectedRequest.approver_email }}</p>
+          </div>
+        </div>
+
+        <!-- Notes -->
+        <div *ngIf="selectedRequest.notes" class="mb-6">
+          <label class="block text-xs font-medium text-gray-500 mb-1">Notes</label>
+          <div class="bg-gray-50 p-3 rounded-lg border border-gray-100 text-sm text-gray-600 whitespace-pre-wrap">
+            {{ selectedRequest.notes }}
+          </div>
+        </div>
+
+        <!-- Rejection Feedback (Rejected only) -->
+        <div *ngIf="selectedRequest.status === 'Rejected' && selectedRequest.rejection_feedback" class="mb-6">
+          <label class="block text-xs font-medium text-gray-500 mb-1">Rejection Feedback</label>
+          <div class="bg-red-50 p-3 rounded-lg border border-red-100 text-sm text-red-700 whitespace-pre-wrap">
+            {{ selectedRequest.rejection_feedback }}
+          </div>
+        </div>
+      </div>
+
+      <ng-template #emptyState>
+        <div class="flex items-center justify-center py-8 text-gray-400">
+          <p>Select a request to see details</p>
+        </div>
+      </ng-template>
+    </div>
+
+  </div>
+
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════════
+     FILTER MODAL
+     ══════════════════════════════════════════════════════════════════ -->
+<div *ngIf="filterPopupOpen" class="fixed inset-0 z-50 flex items-center justify-center" style="background:rgba(0,0,0,0.45)" (click)="closeFilterPopup()">
+  <div class="bg-white rounded-xl shadow-2xl flex flex-col" style="width:420px;max-height:90vh" (click)="$event.stopPropagation()">
+    <div class="flex items-center justify-between px-6 py-4 border-b">
+      <div class="flex items-center gap-2">
+        <svg width="18" height="18" viewBox="0 0 16 16" fill="none">
+          <path d="M2 4h12M4 8h8M6 12h4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+        </svg>
+        <h2 class="text-lg font-bold text-gray-800">Filters</h2>
+      </div>
+      <button (click)="closeFilterPopup()" class="text-gray-400 hover:text-gray-600">
+        <span class="material-symbols-outlined">close</span>
+      </button>
+    </div>
+
+    <div class="px-6 py-4 overflow-y-auto flex-1 space-y-5">
+
+      <!-- Status checkboxes -->
+      <div>
+        <div class="text-[11px] font-medium text-gray-500 uppercase tracking-wider mb-2">Status</div>
+        <div class="space-y-2">
+          <label class="flex items-center gap-2 cursor-pointer">
+            <input type="checkbox" [(ngModel)]="draft.statusPending"
+                   style="accent-color:#378ADD;cursor:pointer">
+            <span class="text-sm text-gray-700">Pending</span>
+            <span class="ml-auto px-2 py-0.5 rounded-full text-xs font-semibold bg-yellow-100 text-yellow-800">Pending</span>
+          </label>
+          <label class="flex items-center gap-2 cursor-pointer">
+            <input type="checkbox" [(ngModel)]="draft.statusApproved"
+                   style="accent-color:#378ADD;cursor:pointer">
+            <span class="text-sm text-gray-700">Approved</span>
+            <span class="ml-auto px-2 py-0.5 rounded-full text-xs font-semibold bg-green-100 text-green-800">Approved</span>
+          </label>
+          <label class="flex items-center gap-2 cursor-pointer">
+            <input type="checkbox" [(ngModel)]="draft.statusRejected"
+                   style="accent-color:#378ADD;cursor:pointer">
+            <span class="text-sm text-gray-700">Rejected</span>
+            <span class="ml-auto px-2 py-0.5 rounded-full text-xs font-semibold bg-red-100 text-red-800">Rejected</span>
+          </label>
+        </div>
+      </div>
+
+      <hr style="border:none;border-top:0.5px solid #e5e7eb">
+
+      <!-- Request date range -->
+      <div>
+        <div class="text-[11px] font-medium text-gray-500 uppercase tracking-wider mb-2">Request Date</div>
+        <div class="rounded-md p-3 space-y-2" style="background:#f3f4f6">
+          <div class="flex gap-3">
+            <div class="flex-1">
+              <label class="block text-[10px] text-gray-500 mb-1">From</label>
+              <input type="date" [(ngModel)]="draft.reqFrom"
+                     class="w-full rounded-md px-2 text-[11px] bg-white text-gray-800 outline-none"
+                     style="height:30px;border:0.5px solid #d1d5db">
+            </div>
+            <div class="flex-1">
+              <label class="block text-[10px] text-gray-500 mb-1">To</label>
+              <input type="date" [(ngModel)]="draft.reqTo"
+                     class="w-full rounded-md px-2 text-[11px] bg-white text-gray-800 outline-none"
+                     style="height:30px;border:0.5px solid #d1d5db">
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <div class="flex justify-between gap-3 px-6 py-4 border-t">
+      <button (click)="clearAllFilters()" class="px-4 py-2 rounded-lg border border-gray-300 text-sm text-gray-700 hover:bg-gray-50">Clear all</button>
+      <button (click)="applyFilters()" class="px-4 py-2 rounded-lg text-sm font-medium bg-royal text-white hover:bg-[#2c5282]">Apply</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════════
+     REQUEST NEW ITEM MODAL
+     ══════════════════════════════════════════════════════════════════ -->
+<div *ngIf="showRequestModal" class="fixed inset-0 z-50 flex items-center justify-center" style="background:rgba(0,0,0,0.45)" (click)="closeRequestModal()">
+  <div class="bg-white rounded-xl shadow-2xl flex flex-col" style="width:480px;max-height:90vh" (click)="$event.stopPropagation()">
+
+    <!-- Header -->
+    <div class="flex items-center justify-between px-6 py-4 border-b">
+      <div class="flex items-center gap-2">
+        <span class="material-symbols-outlined text-xl text-royal">add_shopping_cart</span>
+        <h2 class="text-lg font-bold text-gray-800">Request New Item</h2>
+      </div>
+      <button (click)="closeRequestModal()" class="text-gray-400 hover:text-gray-600">
+        <span class="material-symbols-outlined">close</span>
+      </button>
+    </div>
+
+    <!-- Body -->
+    <div class="px-6 py-4 overflow-y-auto flex-1 space-y-4">
+
+      <!-- Error banner inside modal -->
+      <div *ngIf="errorMessage"
+           class="flex items-center gap-2 rounded-lg px-3 py-2 text-sm bg-red-50 border border-red-200 text-red-700">
+        <span class="material-symbols-outlined text-base shrink-0">error</span>
+        <span>{{ errorMessage }}</span>
+      </div>
+
+      <div class="grid grid-cols-2 gap-4">
+        <!-- Item Name — full width -->
+        <div class="col-span-2">
+          <label class="block text-xs font-medium text-gray-500 mb-1">Item Name <span class="text-red-500">*</span></label>
+          <select [(ngModel)]="selectedItemId"
+                  class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-gold/50">
+            <option [ngValue]="null" disabled>Select an item...</option>
+            <option *ngFor="let item of items" [ngValue]="item.item_id">{{ item.item_name }}</option>
+          </select>
+        </div>
+
+        <!-- Quantity — left half -->
+        <div>
+          <label class="block text-xs font-medium text-gray-500 mb-1">Quantity <span class="text-red-500">*</span></label>
+          <input type="number" min="1" placeholder="e.g. 2"
+                 [(ngModel)]="quantity"
+                 class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-gold/50 placeholder:text-gray-400" />
+        </div>
+      </div>
+
+      <!-- Notes — full width, below grid -->
+      <div>
+        <label class="block text-xs font-medium text-gray-500 mb-1">Notes <span class="text-gray-400 font-normal">(optional)</span></label>
+        <textarea rows="3" placeholder="Provide additional details or specifications..."
+                  [(ngModel)]="notes" maxlength="500"
+                  class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-gold/50 placeholder:text-gray-400 resize-none"></textarea>
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <div class="flex justify-end gap-3 px-6 py-4 border-t">
+      <button (click)="closeRequestModal()"
+              class="px-4 py-2 rounded-lg border border-gray-300 text-sm text-gray-700 hover:bg-gray-50">
+        Cancel
+      </button>
+      <button (click)="submitRequest()"
+              [disabled]="!isFormValid || isSubmitting"
+              class="px-4 py-2 rounded-lg text-sm font-medium bg-royal text-white hover:bg-[#2c5282] disabled:opacity-40">
+        <span *ngIf="isSubmitting" class="material-symbols-outlined text-sm animate-spin mr-1">refresh</span>
+        Submit Request
+      </button>
+    </div>
+
+  </div>
+</div>

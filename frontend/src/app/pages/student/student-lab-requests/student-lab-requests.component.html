@@ -1,0 +1,176 @@
+<div class="space-y-6">
+
+  <!-- Action Bar -->
+  <div class="flex flex-col md:flex-row items-center gap-4">
+    <div class="relative w-full md:flex-1">
+      <span class="absolute inset-y-0 left-0 flex items-center pl-3">
+        <span class="material-symbols-outlined text-xl text-gray-400">search</span>
+      </span>
+      <input type="text" placeholder="Search my lab requests..."
+             [(ngModel)]="searchTerm"
+             class="w-full pl-10 pr-4 py-2 bg-white text-gray-900 border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-gold/50 outline-none" />
+    </div>
+    <button (click)="isModalOpen = true"
+            class="w-full md:flex-1 bg-royal text-white px-6 py-2 rounded-lg font-bold flex items-center justify-center gap-2 hover:bg-[#2c5282] transition-all">
+      <span class="material-symbols-outlined text-xl">add</span>
+      New Lab Request
+    </button>
+  </div>
+
+  <!-- Loading / error state -->
+  <div *ngIf="loading" class="text-center py-12 text-slate-400 font-medium">
+    <span class="material-symbols-outlined text-4xl mb-2 block animate-spin">autorenew</span>
+    Loading lab requests…
+  </div>
+
+  <div *ngIf="!loading && loadError"
+       class="bg-red-50 border border-red-200 rounded-xl p-6 text-center text-red-600 font-medium">
+    Failed to load lab requests. Please refresh the page.
+  </div>
+
+  <!-- Table -->
+  <div *ngIf="!loading && !loadError"
+       class="bg-white rounded-xl shadow-md overflow-hidden border border-slate-200">
+    <div class="overflow-x-auto">
+      <table class="w-full text-left">
+        <thead class="bg-gray-50 border-b border-gray-200">
+          <tr class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
+            <th class="px-6 py-4">Request ID</th>
+            <th class="px-6 py-4">Patient</th>
+            <th class="px-6 py-4">Work Type</th>
+            <th class="px-6 py-4">Date Submitted</th>
+            <th class="px-6 py-4">Supervisor Status</th>
+            <th class="px-6 py-4">Lab Specialist Status</th>
+            <th class="px-6 py-4"></th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-100 bg-white">
+          <tr *ngIf="requests.length === 0">
+            <td colspan="7" class="px-6 py-12 text-center text-slate-400 italic">
+              No lab requests yet.
+            </td>
+          </tr>
+          <tr *ngFor="let req of requests" class="hover:bg-gray-50 transition-colors text-sm group">
+            <td class="px-6 py-4 font-mono font-bold text-royal group-hover:text-gold transition-colors">
+              #{{ req.lab_request_id }}
+            </td>
+            <td class="px-6 py-4 font-semibold text-gray-900">{{ req.patient_name }}</td>
+            <td class="px-6 py-4 text-gray-600 max-w-[200px] truncate">{{ req.request_note }}</td>
+            <td class="px-6 py-4 text-gray-500 whitespace-nowrap">
+              {{ req.request_timestamp | date:'d MMM y' }}
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap">
+              <span [class]="'px-3 py-1 rounded-full text-[11px] font-bold border inline-flex items-center gap-1.5 ' + supervisorClass(req)">
+                <span class="material-symbols-outlined" style="font-size:14px">{{ supervisorIcon(req) }}</span>
+                {{ supervisorLabel(req) }}
+              </span>
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap">
+              <span [class]="'px-3 py-1 rounded-full text-[11px] font-bold border inline-flex items-center gap-1.5 ' + labClass(req)">
+                <span class="material-symbols-outlined" style="font-size:14px">{{ labIcon(req) }}</span>
+                {{ labLabel(req) }}
+              </span>
+            </td>
+            <td class="px-6 py-4 text-right">
+              <button
+                (click)="viewDetails(req.lab_request_id)"
+                [disabled]="detailLoading"
+                class="btn--outline btn--sm px-4 py-1.5 rounded-lg border border-royal text-royal text-xs font-bold hover:bg-royal hover:text-white transition-all disabled:opacity-50 disabled:cursor-wait">
+                View Details
+              </button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+
+<!-- Details modal — mounted once, visibility driven by the signal -->
+<app-lab-request-details-modal
+  [request]="selectedRequest()"
+  (close)="closeModal()">
+</app-lab-request-details-modal>
+
+<!-- New Request Modal -->
+<div *ngIf="isModalOpen" class="fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-50">
+  <div class="bg-white rounded-xl shadow-2xl w-full max-w-2xl overflow-hidden border border-gold/20">
+
+    <!-- Modal Header -->
+    <div class="bg-royal p-5 flex items-center justify-between text-white">
+      <div class="flex items-center gap-3">
+        <div class="bg-white/10 p-2 rounded-lg">
+          <span class="material-symbols-outlined text-2xl text-gold">science</span>
+        </div>
+        <div>
+          <h3 class="text-xl font-bold">Laboratory Work Order</h3>
+          <p class="text-[10px] text-gray-300 font-medium tracking-widest uppercase">Clinical Student Submission</p>
+        </div>
+      </div>
+      <button (click)="isModalOpen = false" class="hover:bg-white/10 p-1.5 rounded-full transition-colors">
+        <span class="material-symbols-outlined text-2xl">close</span>
+      </button>
+    </div>
+
+    <form class="p-8 space-y-6">
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div class="space-y-2">
+          <label class="block text-xs font-black text-slate-500 uppercase tracking-widest">Patient File No.</label>
+          <input type="text" placeholder="e.g. 43982"
+                 class="w-full p-3 border border-slate-300 bg-white text-gray-900 rounded-xl focus:ring-2 focus:ring-gold/30 focus:border-gold outline-none transition-all" />
+        </div>
+        <div class="space-y-2">
+          <label class="block text-xs font-black text-slate-500 uppercase tracking-widest">Tooth Number(s)</label>
+          <input type="text" placeholder="e.g. 14, 15"
+                 class="w-full p-3 border border-slate-300 bg-white text-gray-900 rounded-xl focus:ring-2 focus:ring-gold/30 focus:border-gold outline-none transition-all" />
+        </div>
+        <div class="space-y-2">
+          <label class="block text-xs font-black text-slate-500 uppercase tracking-widest">Type of Work</label>
+          <select class="w-full p-3 border border-slate-300 bg-white text-gray-900 rounded-xl focus:ring-2 focus:ring-gold/30 focus:border-gold outline-none transition-all">
+            <option>Select work type...</option>
+            <option>Zirconia Crown</option>
+            <option>PFM Bridge</option>
+            <option>Acrylic Partial Denture</option>
+            <option>Chrome Cobalt</option>
+            <option>Night Guard / Splint</option>
+          </select>
+        </div>
+        <div class="space-y-2">
+          <label class="block text-xs font-black text-slate-500 uppercase tracking-widest">Shade</label>
+          <select class="w-full p-3 border border-slate-300 bg-white text-gray-900 rounded-xl focus:ring-2 focus:ring-gold/30 focus:border-gold outline-none transition-all">
+            <option>Select Shade...</option>
+            <option>A1</option><option>A2</option><option>A3</option>
+            <option>B1</option><option>C1</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="space-y-2">
+        <label class="block text-xs font-black text-slate-500 uppercase tracking-widest">Instructions for Lab</label>
+        <textarea rows="4" placeholder="Provide detailed clinical specifications..."
+                  class="w-full p-3 border border-slate-300 bg-white text-gray-900 rounded-xl focus:ring-2 focus:ring-gold/30 focus:border-gold outline-none transition-all resize-none"></textarea>
+      </div>
+
+      <!-- Workflow note -->
+      <div class="bg-blue-50 p-4 rounded-xl border border-blue-100 flex gap-3">
+        <span class="material-symbols-outlined text-xl text-blue-600 flex-shrink-0 mt-0.5">info</span>
+        <p class="text-xs text-blue-700 font-medium leading-relaxed">
+          This request will first be sent to your <span class="font-bold">Clinical Supervisor</span> for approval.
+          Once approved, it will be automatically forwarded to the Laboratory Specialist.
+        </p>
+      </div>
+
+      <div class="flex justify-end gap-3 pt-6 border-t border-slate-100">
+        <button type="button" (click)="isModalOpen = false"
+                class="px-6 py-3 text-slate-500 font-bold hover:bg-slate-50 rounded-xl transition-colors uppercase text-xs tracking-widest">
+          Discard
+        </button>
+        <button type="submit"
+                class="px-8 py-3 bg-gold text-royal font-black rounded-xl hover:shadow-lg transition-all active:scale-95 uppercase text-xs tracking-widest">
+          Submit Order
+        </button>
+      </div>
+    </form>
+  </div>
+</div>

@@ -1,0 +1,553 @@
+<!-- ─── Patient Detail View ─── -->
+<ng-container *ngIf="selectedPatient as p; else listView">
+  <div class="space-y-6">
+
+    <button (click)="selectedPatient = null"
+            class="flex items-center text-sm text-gray-500 hover:text-royal transition-colors">
+      <span class="material-symbols-outlined text-base mr-1">arrow_back</span> Back to List
+    </button>
+
+    <!-- ── Header Card (always visible) ── -->
+    <div class="bg-white rounded-lg shadow-sm p-6 border-l-4 border-royal">
+      <h1 class="text-2xl font-bold text-royal">{{ p.name }}</h1>
+      <p class="text-gray-500 text-sm">File No: {{ p.fileNo }}</p>
+
+      <div *ngIf="record?.chronic_diseases"
+           class="mt-4 bg-red-50 text-red-700 px-4 py-3 rounded-lg flex items-center border border-red-200">
+        <span class="material-symbols-outlined text-xl mr-3">warning</span>
+        <p class="text-sm font-bold">Medical Alert: {{ record!.chronic_diseases }}</p>
+      </div>
+
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-6 mt-6 pt-6 border-t text-sm">
+        <div><span class="text-gray-500 block uppercase font-bold text-[10px]">Phone</span>{{ p.phone }}</div>
+        <div><span class="text-gray-500 block uppercase font-bold text-[10px]">Date of Birth</span>{{ p.dob }}</div>
+        <div><span class="text-gray-500 block uppercase font-bold text-[10px]">Civil ID</span>{{ p.civil }}</div>
+        <div><span class="text-gray-500 block uppercase font-bold text-[10px]">Gender</span>{{ p.gender }}</div>
+      </div>
+    </div>
+
+    <!-- ── Section Navigation ── -->
+    <div class="bg-white rounded-lg shadow-sm border border-gray-200 flex overflow-hidden">
+      <button *ngFor="let section of sections; let last = last"
+              (click)="setSection(section.id)"
+              [class]="'relative flex-1 flex items-center justify-center gap-2.5 px-6 py-4 text-sm font-bold transition-colors border-b-[3px] ' +
+                (!last ? 'border-r border-r-gray-200 ' : '') +
+                (activeSection === section.id
+                  ? 'border-b-gray-900 text-gray-900 bg-white'
+                  : 'border-b-transparent text-gray-500 bg-gray-50 hover:bg-gray-100 hover:text-gray-700')">
+        <span [class]="'w-2 h-2 rounded-full bg-gold flex-shrink-0 transition-opacity ' +
+                        (activeSection === section.id ? 'opacity-100' : 'opacity-0')"></span>
+        <span class="material-symbols-outlined text-base">{{ section.icon }}</span>
+        {{ section.label }}
+      </button>
+    </div>
+
+    <!-- ══ Section 1: Patient File ══ -->
+    <div *ngIf="activeSection === 'patient-file'" class="bg-white rounded-lg shadow-md overflow-hidden">
+      <div class="flex border-b overflow-x-auto bg-gray-50">
+        <button *ngFor="let tab of patientFileTabs"
+                (click)="activeTab = tab.id"
+                [class]="'flex-1 py-4 px-6 text-sm font-bold whitespace-nowrap transition-colors ' +
+                  (activeTab === tab.id ? 'text-royal border-b-4 border-gold bg-white' : 'text-gray-500 hover:bg-gray-100')">
+          {{ tab.label }}
+        </button>
+      </div>
+
+      <div class="p-6 min-h-[300px]">
+
+        <!-- Chief Complaint -->
+        <div *ngIf="activeTab === 'chief'">
+          <div *ngIf="recordLoading" class="text-center py-8 text-gray-400">Loading record…</div>
+          <div *ngIf="!recordLoading && record" class="space-y-4 text-sm">
+            <div>
+              <span class="text-xs font-bold text-gray-500 uppercase">Chief Complaint</span>
+              <p class="mt-2 text-gray-800 bg-gray-50 p-4 rounded-lg">{{ record!.chief_complaint || '—' }}</p>
+            </div>
+            <div>
+              <span class="text-xs font-bold text-gray-500 uppercase">Chronic Diseases</span>
+              <p class="mt-2 text-gray-800 bg-gray-50 p-4 rounded-lg">{{ record!.chronic_diseases || 'None' }}</p>
+            </div>
+          </div>
+          <div *ngIf="!recordLoading && !record" class="text-center py-8 text-gray-400">No medical record found.</div>
+        </div>
+
+        <!-- Medical History -->
+        <div *ngIf="activeTab === 'medical'">
+          <div *ngIf="recordLoading" class="text-center py-8 text-gray-400">Loading…</div>
+          <ng-container *ngIf="!recordLoading && record">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+              <div>
+                <label class="block text-sm font-bold text-gray-700 mb-1">Chief Complaint</label>
+                <textarea [(ngModel)]="historyForm.chiefComplaint" rows="3"
+                          class="w-full bg-white text-gray-900 border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-royal focus:border-royal text-sm resize-none"></textarea>
+              </div>
+              <div>
+                <label class="block text-sm font-bold text-gray-700 mb-1">Chronic Diseases</label>
+                <textarea [(ngModel)]="historyForm.chronicDiseases" rows="3"
+                          class="w-full bg-white text-gray-900 border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-royal focus:border-royal text-sm resize-none"></textarea>
+              </div>
+            </div>
+            <button (click)="saveHistory()" [disabled]="isSavingHistory"
+                    class="bg-royal text-white text-sm py-2 px-5 rounded-lg font-bold hover:bg-[#2c5282] disabled:opacity-50">
+              {{ isSavingHistory ? 'Saving…' : 'Save Changes' }}
+            </button>
+          </ng-container>
+        </div>
+
+        <!-- Dental Chart -->
+        <div *ngIf="activeTab === 'dental'">
+          <app-dental-chart></app-dental-chart>
+        </div>
+
+        <!-- Treatment Plan -->
+        <div *ngIf="activeTab === 'treatment'">
+          <div *ngIf="recordLoading" class="text-center py-8 text-gray-400">Loading…</div>
+          <ng-container *ngIf="!recordLoading && record">
+            <div class="flex items-center justify-between mb-4">
+              <h3 class="font-bold text-gray-700">Treatments ({{ record!.treatments.length }})</h3>
+              <button (click)="openTreatModal()"
+                      class="bg-royal text-white text-xs py-1.5 px-4 rounded-lg font-bold hover:bg-[#2c5282]">
+                + Add Treatment
+              </button>
+            </div>
+            <div *ngIf="record!.treatments.length === 0" class="text-sm text-gray-400 italic">No treatments yet.</div>
+            <div *ngFor="let t of record!.treatments" class="border border-gray-200 rounded-lg p-4 mb-3 text-sm">
+              <div class="flex items-center justify-between mb-2">
+                <span class="font-bold text-royal">{{ t.treatment_type }}</span>
+                <span class="text-xs text-gray-500">by {{ t.authored_by_name || '—' }}</span>
+              </div>
+              <p class="text-gray-700 mb-2">{{ t.treatment_note }}</p>
+              <div class="bg-blue-50 border border-blue-100 rounded-md px-3 py-2 text-xs text-blue-800">
+                <span class="font-bold">Prescription:</span>
+                {{ t.medicine_name }} — {{ t.dosage }} / {{ t.duration }}
+                <span class="ml-2 text-blue-600">(SAR {{ t.cost }})</span>
+              </div>
+              <p *ngIf="t.doctor_feedback" class="mt-2 text-xs text-gray-500 italic">Feedback: {{ t.doctor_feedback }}</p>
+            </div>
+          </ng-container>
+        </div>
+
+        <!-- Screening -->
+        <div *ngIf="activeTab === 'screening'" class="text-center py-12 text-gray-400">
+          <span class="material-symbols-outlined text-4xl mb-3 block">health_and_safety</span>
+          <p class="text-sm">No screening records available.</p>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ══ Section 2: Lab Request ══ -->
+    <div *ngIf="activeSection === 'lab-request'" class="space-y-4">
+
+      <div class="flex justify-end">
+        <button (click)="openLabModal()"
+                class="bg-royal text-white px-6 py-2 rounded-lg font-bold flex items-center gap-2 hover:bg-[#2c5282] transition-all">
+          <span class="material-symbols-outlined text-xl">add</span>
+          New Lab Request
+        </button>
+      </div>
+
+    <div class="bg-white rounded-xl shadow-md overflow-hidden border border-slate-200">
+
+      <div *ngIf="labRequestsLoading" class="py-12 text-center text-gray-400 text-sm">
+        <span class="material-symbols-outlined text-3xl mb-2 block animate-spin">progress_activity</span>
+        Loading lab requests…
+      </div>
+
+      <div *ngIf="!labRequestsLoading" class="overflow-x-auto">
+        <table class="w-full text-left">
+          <thead class="bg-gray-50 border-b border-gray-200">
+            <tr class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
+              <th class="px-6 py-4">Request ID</th>
+              <th class="px-6 py-4">Work Type</th>
+              <th class="px-6 py-4">Submitted By</th>
+              <th class="px-6 py-4">Date Submitted</th>
+              <th class="px-6 py-4">Supervisor Status</th>
+              <th class="px-6 py-4">Lab Specialist Status</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-gray-100 bg-white">
+            <tr *ngFor="let req of labRequests" class="hover:bg-gray-50 transition-colors text-sm group">
+              <td class="px-6 py-4 font-mono font-bold text-royal group-hover:text-gold transition-colors">{{ req.id }}</td>
+              <td class="px-6 py-4 text-gray-600 max-w-xs truncate">{{ req.workType }}</td>
+              <td class="px-6 py-4 text-gray-600">{{ req.studentName }}</td>
+              <td class="px-6 py-4 text-gray-500">{{ req.dateSent }}</td>
+              <td class="px-6 py-4 whitespace-nowrap">
+                <span [class]="'px-3 py-1 rounded-full text-[11px] font-bold border flex items-center w-fit gap-1.5 ' + labStatusClass(req.doctorStatus)">
+                  <span class="material-symbols-outlined" style="font-size:14px">{{ labStatusIcon(req.doctorStatus) }}</span>
+                  {{ req.doctorStatus }}
+                </span>
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap">
+                <span [class]="'px-3 py-1 rounded-full text-[11px] font-bold border flex items-center w-fit gap-1.5 ' + labStatusClass(effectiveLabStatus(req))">
+                  <span class="material-symbols-outlined" style="font-size:14px">{{ labStatusIcon(effectiveLabStatus(req)) }}</span>
+                  {{ effectiveLabStatus(req) }}
+                </span>
+              </td>
+            </tr>
+            <tr *ngIf="labRequests.length === 0">
+              <td colspan="6" class="px-6 py-12 text-center text-sm text-gray-400">
+                <span class="material-symbols-outlined text-3xl mb-2 block">science</span>
+                No lab requests found for this patient.
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+    </div>
+
+    <!-- ══ Section 3: Procedure Note ══ -->
+    <div *ngIf="activeSection === 'procedure-note'" class="space-y-4">
+
+      <!-- Note Detail View -->
+      <ng-container *ngIf="selectedDiagnosis as diag; else diagListView">
+        <button (click)="selectedDiagnosis = null"
+                class="flex items-center text-sm text-gray-500 hover:text-royal transition-colors">
+          <span class="material-symbols-outlined text-base mr-1">arrow_back</span> Back to Procedure Notes
+        </button>
+
+        <div class="bg-white rounded-lg shadow-md p-6">
+          <div class="mb-6">
+            <h3 class="text-lg font-bold text-royal mb-2 border-b pb-2">Note Details</h3>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+              <p><strong>Procedure:</strong> {{ diag.diagnosis_type }}</p>
+              <p><strong>Authored by:</strong> {{ diag.authored_by_name || '—' }}</p>
+            </div>
+          </div>
+          <div class="mb-4">
+            <h4 class="font-bold text-gray-700 mb-2">Clinical Findings:</h4>
+            <p class="text-gray-600 bg-gray-50 p-4 rounded-md text-sm">{{ diag.clinical_findings }}</p>
+          </div>
+          <div class="mb-4">
+            <h4 class="font-bold text-gray-700 mb-2">Radiographic Findings:</h4>
+            <p class="text-gray-600 bg-gray-50 p-4 rounded-md text-sm">{{ diag.radiographic_findings }}</p>
+          </div>
+          <div class="mb-4">
+            <h4 class="font-bold text-gray-700 mb-2">Progress Note:</h4>
+            <p class="text-gray-600 bg-gray-50 p-4 rounded-md text-sm">{{ diag.progress_note }}</p>
+          </div>
+          <div *ngIf="diag.doctor_feedback">
+            <h4 class="font-bold text-gray-700 mb-2">Doctor Feedback:</h4>
+            <p class="text-gray-600 bg-gray-50 p-4 rounded-md text-sm">{{ diag.doctor_feedback }}</p>
+          </div>
+        </div>
+      </ng-container>
+
+      <!-- Note List View -->
+      <ng-template #diagListView>
+        <div class="flex justify-end">
+          <button (click)="openDiagModal()"
+                  class="bg-royal text-white px-6 py-2 rounded-lg font-bold flex items-center gap-2 hover:bg-[#2c5282] transition-all">
+            <span class="material-symbols-outlined text-xl">add</span>
+            Add Diagnosis
+          </button>
+        </div>
+
+        <div class="bg-white rounded-lg shadow-md overflow-hidden">
+          <div *ngIf="recordLoading" class="py-12 text-center text-gray-400 text-sm">
+            <span class="material-symbols-outlined text-3xl mb-2 block animate-spin">progress_activity</span>
+            Loading…
+          </div>
+          <div *ngIf="!recordLoading" class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200">
+              <thead class="bg-gray-50">
+                <tr>
+                  <th class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Procedure</th>
+                  <th class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Clinical Findings</th>
+                  <th class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Authored By</th>
+                  <th class="px-6 py-4"></th>
+                </tr>
+              </thead>
+              <tbody class="bg-white divide-y divide-gray-200">
+                <tr *ngFor="let d of record?.diagnoses" class="hover:bg-gray-50 transition-colors">
+                  <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{{ d.diagnosis_type }}</td>
+                  <td class="px-6 py-4 text-sm text-gray-600 max-w-xs truncate">{{ d.clinical_findings }}</td>
+                  <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ d.authored_by_name || '—' }}</td>
+                  <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-right">
+                    <button (click)="selectedDiagnosis = d"
+                            class="bg-royal text-white text-xs font-bold py-1.5 px-4 rounded hover:bg-[#2c5282] transition-colors">
+                      View Note
+                    </button>
+                  </td>
+                </tr>
+                <tr *ngIf="!record?.diagnoses?.length">
+                  <td colspan="4" class="px-6 py-10 text-center text-sm text-gray-500">
+                    <span class="material-symbols-outlined text-3xl mb-2 block">edit_note</span>
+                    No procedure notes yet. Click <strong>Add Diagnosis</strong> to create one.
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </ng-template>
+    </div>
+
+  </div>
+</ng-container>
+
+<!-- ─── Patient List View ─── -->
+<ng-template #listView>
+  <div class="space-y-4">
+    <div class="flex flex-col md:flex-row items-center gap-4">
+      <div class="relative w-full md:flex-1">
+        <span class="absolute inset-y-0 left-0 flex items-center pl-3">
+          <span class="material-symbols-outlined text-xl text-gray-400">search</span>
+        </span>
+        <input type="text" placeholder="Search by Patient Name or File No..."
+               [(ngModel)]="searchTerm" (input)="onSearchChange()"
+               class="w-full pl-10 pr-4 py-2 bg-white text-gray-900 border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-gold/50 outline-none" />
+      </div>
+    </div>
+
+    <div class="bg-white rounded-lg shadow-md overflow-hidden">
+      <div class="overflow-x-auto">
+        <table class="min-w-full divide-y divide-gray-200">
+          <thead class="bg-gray-50">
+            <tr>
+              <th class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Patient Name</th>
+              <th class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">File No</th>
+              <th class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Date of Birth</th>
+              <th class="px-6 py-4"></th>
+            </tr>
+          </thead>
+          <tbody class="bg-white divide-y divide-gray-200">
+            <tr *ngIf="patientsLoading">
+              <td colspan="4" class="text-center py-8 text-gray-400">Loading patients…</td>
+            </tr>
+            <tr *ngIf="patientsError && !patientsLoading">
+              <td colspan="4" class="text-center py-8 text-red-400">Failed to load patients. Please try again.</td>
+            </tr>
+            <ng-container *ngIf="!patientsLoading && !patientsError">
+              <tr *ngFor="let patient of patients"
+                  class="hover:bg-gray-50 cursor-pointer"
+                  (click)="openPatient(patient.id)">
+                <td class="px-6 py-4 whitespace-nowrap font-medium text-gray-900">{{ patient.name }}</td>
+                <td class="px-6 py-4 whitespace-nowrap text-gray-600">{{ patient.fileNo }}</td>
+                <td class="px-6 py-4 whitespace-nowrap text-gray-500">{{ patient.dob }}</td>
+                <td class="px-6 py-4 text-right">
+                  <span class="inline-block bg-royal text-white text-xs font-bold py-1.5 px-5 rounded hover:bg-[#2c5282] transition-colors">
+                    Open File
+                  </span>
+                </td>
+              </tr>
+              <tr *ngIf="patients.length === 0">
+                <td colspan="4" class="text-center py-8 text-gray-400">No patients found.</td>
+              </tr>
+            </ng-container>
+          </tbody>
+        </table>
+      </div>
+      <div class="flex items-center justify-between px-4 py-1.5 border-t text-xs text-gray-600">
+        <div class="flex items-center gap-2">
+          <span class="text-gray-500">Rows:</span>
+          <select [ngModel]="pageSize" (ngModelChange)="onPageSizeChange($event)"
+                  class="border border-gray-300 rounded px-2 py-1 text-sm bg-white outline-none focus:ring-2 focus:ring-gold/50">
+            <option *ngFor="let s of pageSizeOptions" [value]="s">{{ s }}</option>
+          </select>
+        </div>
+        <div class="flex items-center gap-1">
+          <span class="text-gray-500 text-xs">{{ pageRangeStart }}–{{ pageRangeEnd }} of {{ totalPatients }}</span>
+          <button (click)="goToPage(currentPage - 1)" [disabled]="currentPage <= 1"
+                  class="p-1 rounded hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed">
+            <span class="material-symbols-outlined text-base leading-none">chevron_left</span>
+          </button>
+          <span class="font-medium text-xs">{{ currentPage }} / {{ totalPages }}</span>
+          <button (click)="goToPage(currentPage + 1)" [disabled]="currentPage >= totalPages"
+                  class="p-1 rounded hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed">
+            <span class="material-symbols-outlined text-base leading-none">chevron_right</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</ng-template>
+
+<!-- ─── New Lab Request Modal ─── -->
+<div *ngIf="showLabModal" class="fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-50">
+  <div class="bg-white rounded-xl shadow-2xl w-full max-w-2xl overflow-hidden border border-gold/20">
+
+    <div class="bg-royal p-5 flex items-center justify-between text-white">
+      <div class="flex items-center gap-3">
+        <div class="bg-white/10 p-2 rounded-lg">
+          <span class="material-symbols-outlined text-2xl text-gold">science</span>
+        </div>
+        <div>
+          <h3 class="text-xl font-bold">Laboratory Work Order</h3>
+          <p class="text-[10px] text-gray-300 font-medium tracking-widest uppercase">Doctor Submission</p>
+        </div>
+      </div>
+      <button (click)="closeLabModal()" class="hover:bg-white/10 p-1.5 rounded-full transition-colors">
+        <span class="material-symbols-outlined text-2xl">close</span>
+      </button>
+    </div>
+
+    <div class="p-8 space-y-6 overflow-y-auto max-h-[65vh]">
+      <div *ngIf="labError" class="bg-red-50 border border-red-200 text-red-700 text-sm px-4 py-3 rounded-xl">
+        {{ labError }}
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div class="space-y-2">
+          <label class="block text-xs font-black text-slate-500 uppercase tracking-widest">Patient File No.</label>
+          <input type="text" [value]="selectedPatient?.fileNo" readonly
+                 class="w-full p-3 border border-slate-200 bg-slate-50 text-gray-500 rounded-xl cursor-not-allowed" />
+        </div>
+        <div class="space-y-2">
+          <label class="block text-xs font-black text-slate-500 uppercase tracking-widest">Tooth Number(s)</label>
+          <input type="text" [(ngModel)]="labForm.toothNumber" placeholder="e.g. 14, 15"
+                 class="w-full p-3 border border-slate-300 bg-white text-gray-900 rounded-xl focus:ring-2 focus:ring-gold/30 focus:border-gold outline-none transition-all" />
+        </div>
+        <div class="space-y-2">
+          <label class="block text-xs font-black text-slate-500 uppercase tracking-widest">Type of Work <span class="text-red-500">*</span></label>
+          <select [(ngModel)]="labForm.workType"
+                  class="w-full p-3 border border-slate-300 bg-white text-gray-900 rounded-xl focus:ring-2 focus:ring-gold/30 focus:border-gold outline-none transition-all">
+            <option value="">Select work type...</option>
+            <option>Zirconia Crown</option>
+            <option>PFM Bridge</option>
+            <option>Acrylic Partial Denture</option>
+            <option>Chrome Cobalt</option>
+            <option>Night Guard / Splint</option>
+          </select>
+        </div>
+        <div class="space-y-2">
+          <label class="block text-xs font-black text-slate-500 uppercase tracking-widest">Shade</label>
+          <select [(ngModel)]="labForm.shade"
+                  class="w-full p-3 border border-slate-300 bg-white text-gray-900 rounded-xl focus:ring-2 focus:ring-gold/30 focus:border-gold outline-none transition-all">
+            <option value="">Select Shade...</option>
+            <option>A1</option><option>A2</option><option>A3</option>
+            <option>B1</option><option>C1</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="space-y-2">
+        <label class="block text-xs font-black text-slate-500 uppercase tracking-widest">Instructions for Lab <span class="text-red-500">*</span></label>
+        <textarea [(ngModel)]="labForm.instructions" rows="4" placeholder="Provide detailed clinical specifications..."
+                  class="w-full p-3 border border-slate-300 bg-white text-gray-900 rounded-xl focus:ring-2 focus:ring-gold/30 focus:border-gold outline-none transition-all resize-none"></textarea>
+      </div>
+    </div>
+
+    <div class="flex justify-end gap-3 px-8 py-5 border-t border-slate-100">
+      <button type="button" (click)="closeLabModal()"
+              class="px-6 py-3 text-slate-500 font-bold hover:bg-slate-50 rounded-xl transition-colors uppercase text-xs tracking-widest">
+        Discard
+      </button>
+      <button type="button" (click)="submitLabRequest()" [disabled]="labSubmitting"
+              class="px-8 py-3 bg-gold text-royal font-black rounded-xl hover:shadow-lg transition-all active:scale-95 uppercase text-xs tracking-widest disabled:opacity-50 disabled:cursor-not-allowed">
+        {{ labSubmitting ? 'Submitting…' : 'Submit Order' }}
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ─── Add Diagnosis Modal ─── -->
+<div *ngIf="isDiagModalOpen" class="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+  <div class="bg-white rounded-lg shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
+    <div class="flex items-center justify-between p-4 border-b sticky top-0 bg-white z-10">
+      <h3 class="text-xl font-bold text-royal">Add Diagnosis</h3>
+      <button (click)="isDiagModalOpen = false" class="text-gray-400 hover:text-gray-600">
+        <span class="material-symbols-outlined text-2xl">close</span>
+      </button>
+    </div>
+    <form class="p-6 space-y-4" (ngSubmit)="saveDiagnosis()">
+      <p *ngIf="diagError" class="text-sm text-red-600 bg-red-50 border border-red-200 rounded-md px-3 py-2">{{ diagError }}</p>
+
+      <div>
+        <label class="block text-sm font-medium text-gray-700">Patient</label>
+        <input type="text" [value]="selectedPatient?.name" readonly
+               class="mt-1 w-full bg-gray-50 text-gray-500 border border-gray-200 rounded-md py-2 px-3 cursor-not-allowed" />
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-gray-700">Diagnosis Type <span class="text-red-500">*</span></label>
+        <input type="text" [(ngModel)]="diagForm.diagnosisType" name="diagnosisType" placeholder="e.g. Initial, Follow-up"
+               class="mt-1 w-full bg-white text-gray-900 border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-royal focus:border-royal" />
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-gray-700">Clinical Findings <span class="text-red-500">*</span></label>
+        <textarea [(ngModel)]="diagForm.clinicalFindings" name="clinicalFindings" rows="3"
+                  class="mt-1 w-full bg-white text-gray-900 border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-royal focus:border-royal resize-none"></textarea>
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-gray-700">Radiographic Findings <span class="text-red-500">*</span></label>
+        <textarea [(ngModel)]="diagForm.radiographicFindings" name="radiographicFindings" rows="3"
+                  class="mt-1 w-full bg-white text-gray-900 border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-royal focus:border-royal resize-none"></textarea>
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-gray-700">Progress Note <span class="text-red-500">*</span></label>
+        <textarea [(ngModel)]="diagForm.progressNote" name="progressNote" rows="3"
+                  class="mt-1 w-full bg-white text-gray-900 border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-royal focus:border-royal resize-none"></textarea>
+      </div>
+
+      <div class="flex justify-end gap-3 pt-4 border-t">
+        <button type="button" (click)="isDiagModalOpen = false"
+                class="bg-gray-100 text-gray-700 py-2 px-6 rounded-lg font-bold hover:bg-gray-200">Cancel</button>
+        <button type="submit" [disabled]="isSavingDiag"
+                class="bg-royal text-white py-2 px-6 rounded-lg font-bold hover:bg-[#2c5282] disabled:opacity-50">
+          {{ isSavingDiag ? 'Saving…' : 'Save Diagnosis' }}
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ─── Add Treatment Modal ─── -->
+<div *ngIf="isTreatModalOpen" class="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+  <div class="bg-white rounded-lg shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
+    <div class="flex items-center justify-between p-4 border-b sticky top-0 bg-white z-10">
+      <h3 class="text-xl font-bold text-royal">Add Treatment & Prescription</h3>
+      <button (click)="isTreatModalOpen = false" class="text-gray-400 hover:text-gray-600">
+        <span class="material-symbols-outlined text-2xl">close</span>
+      </button>
+    </div>
+    <form class="p-6 space-y-4" (ngSubmit)="saveTreatment()">
+      <p *ngIf="treatError" class="text-sm text-red-600 bg-red-50 border border-red-200 rounded-md px-3 py-2">{{ treatError }}</p>
+
+      <p class="text-xs text-gray-500 font-semibold uppercase tracking-wider border-b pb-1">Treatment Details</p>
+      <div>
+        <label class="block text-sm font-medium text-gray-700">Treatment Type <span class="text-red-500">*</span></label>
+        <input type="text" [(ngModel)]="treatForm.treatmentType" name="treatmentType" placeholder="e.g. Root Canal, Extraction"
+               class="mt-1 w-full bg-white text-gray-900 border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-royal focus:border-royal" />
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-gray-700">Treatment Note <span class="text-red-500">*</span></label>
+        <textarea [(ngModel)]="treatForm.treatmentNote" name="treatmentNote" rows="3"
+                  class="mt-1 w-full bg-white text-gray-900 border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-royal focus:border-royal resize-none"></textarea>
+      </div>
+
+      <p class="text-xs text-gray-500 font-semibold uppercase tracking-wider border-b pb-1 pt-2">Prescription</p>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div class="md:col-span-2">
+          <label class="block text-sm font-medium text-gray-700">Medicine Name <span class="text-red-500">*</span></label>
+          <input type="text" [(ngModel)]="treatForm.medicineName" name="medicineName"
+                 class="mt-1 w-full bg-white text-gray-900 border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-royal focus:border-royal" />
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700">Dosage <span class="text-red-500">*</span></label>
+          <input type="text" [(ngModel)]="treatForm.dosage" name="dosage" placeholder="e.g. 500mg twice daily"
+                 class="mt-1 w-full bg-white text-gray-900 border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-royal focus:border-royal" />
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700">Duration <span class="text-red-500">*</span></label>
+          <input type="text" [(ngModel)]="treatForm.duration" name="duration" placeholder="e.g. 7 days"
+                 class="mt-1 w-full bg-white text-gray-900 border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-royal focus:border-royal" />
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700">Cost (SAR) <span class="text-red-500">*</span></label>
+          <input type="number" step="0.01" min="0" [(ngModel)]="treatForm.cost" name="cost"
+                 class="mt-1 w-full bg-white text-gray-900 border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-royal focus:border-royal" />
+        </div>
+      </div>
+
+      <div class="flex justify-end gap-3 pt-4 border-t">
+        <button type="button" (click)="isTreatModalOpen = false"
+                class="bg-gray-100 text-gray-700 py-2 px-6 rounded-lg font-bold hover:bg-gray-200">Cancel</button>
+        <button type="submit" [disabled]="isSavingTreat"
+                class="bg-royal text-white py-2 px-6 rounded-lg font-bold hover:bg-[#2c5282] disabled:opacity-50">
+          {{ isSavingTreat ? 'Saving…' : 'Save Treatment' }}
+        </button>
+      </div>
+    </form>
+  </div>
+</div>

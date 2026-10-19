@@ -1,0 +1,237 @@
+<!-- Toast -->
+<div *ngIf="toastVisible"
+     class="fixed bottom-6 right-6 z-50 bg-royal text-white text-sm font-semibold px-5 py-3 rounded-xl shadow-lg transition-all">
+  {{ toastMessage }}
+</div>
+
+<!-- Withdraw Confirmation Modal -->
+<div *ngIf="confirmWithdrawId !== null"
+     class="fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-50">
+  <div class="bg-white rounded-xl shadow-xl w-full max-w-sm p-6 space-y-4">
+    <h3 class="text-lg font-bold text-gray-900">Withdraw Submission?</h3>
+    <p class="text-sm text-gray-600">This cannot be undone. The submission will be removed from the review queue.</p>
+    <div class="flex gap-3 justify-end">
+      <button (click)="cancelWithdraw()" class="text-gray-600 py-2 px-4 rounded-lg text-sm font-medium hover:bg-gray-100">
+        Cancel
+      </button>
+      <button (click)="confirmWithdraw()" [disabled]="isWithdrawing"
+              class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-5 rounded-lg text-sm disabled:opacity-60">
+        {{ isWithdrawing ? 'Withdrawing…' : 'Withdraw' }}
+      </button>
+    </div>
+  </div>
+</div>
+
+<div class="space-y-4">
+
+  <!-- Revision banner -->
+  <div *ngIf="revisionCount > 0"
+       class="bg-orange-50 border border-orange-200 rounded-xl px-5 py-3 text-sm text-orange-800 font-medium">
+    ⚠ {{ revisionCount }} note{{ revisionCount > 1 ? 's' : '' }} require{{ revisionCount > 1 ? '' : 's' }} your revision.
+    Review the feedback below and resubmit.
+  </div>
+
+  <!-- Action bar -->
+  <div class="flex flex-col md:flex-row items-center gap-4">
+    <div class="relative w-full md:flex-1">
+      <span class="absolute inset-y-0 left-0 flex items-center pl-3">
+        <span class="material-symbols-outlined text-xl text-gray-400">search</span>
+      </span>
+      <input type="text" placeholder="Search by patient or procedure..."
+             [(ngModel)]="searchTerm"
+             class="w-full pl-10 pr-4 py-2 bg-white text-gray-900 border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-gold/50 outline-none" />
+    </div>
+    <button (click)="openAddModal()"
+            class="w-full md:w-auto bg-royal text-white px-6 py-2 rounded-lg font-bold flex items-center justify-center gap-2 hover:bg-[#2c5282] transition-all">
+      <span class="material-symbols-outlined text-xl">add</span>
+      Add Procedure Note
+    </button>
+  </div>
+
+  <!-- Loading -->
+  <div *ngIf="loading" class="text-center py-10 text-gray-400 text-sm">Loading…</div>
+
+  <!-- Table -->
+  <div *ngIf="!loading" class="bg-white rounded-lg shadow-md overflow-hidden">
+    <div class="overflow-x-auto">
+      <table class="min-w-full divide-y divide-gray-200">
+        <thead class="bg-gray-50">
+          <tr>
+            <th class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Patient</th>
+            <th class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Type</th>
+            <th class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Procedure</th>
+            <th class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Submitted</th>
+            <th class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Status</th>
+            <th class="px-6 py-4"></th>
+          </tr>
+        </thead>
+        <tbody class="bg-white divide-y divide-gray-200">
+          <ng-container *ngFor="let sub of filteredSubmissions">
+
+            <!-- Main row -->
+            <tr [class]="'hover:bg-gray-50 transition-colors ' + statusRowClass(sub.status)">
+              <td class="px-6 py-4 whitespace-nowrap">
+                <p class="text-sm font-medium text-gray-900">{{ sub.patient_name }}</p>
+                <p class="text-xs text-gray-400">File #{{ sub.patient_file_no }}</p>
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap">
+                <span [class]="'px-2 py-0.5 rounded-full text-xs font-semibold ' + typeClass(sub.submission_type)">
+                  {{ typeLabel(sub.submission_type) }}
+                </span>
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ sub.procedure_label }}</td>
+              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                {{ timeAgo(sub.submitted_at) }}
+                <span *ngIf="sub.revision_count > 0" class="ml-1 text-xs text-gray-400">(rev. {{ sub.revision_count }})</span>
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap">
+                <app-status-badge [status]="sub.status"></app-status-badge>
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap text-right">
+                <button *ngIf="sub.status === 'Revision_Requested'"
+                        (click)="toggleExpand(sub)"
+                        class="bg-orange-500 hover:bg-orange-600 text-white text-xs font-bold py-1.5 px-4 rounded-lg transition-colors">
+                  {{ isExpanded(sub) ? 'Collapse' : 'Revise' }}
+                </button>
+              </td>
+            </tr>
+
+            <!-- Revision expansion row -->
+            <tr *ngIf="isExpanded(sub)" class="bg-orange-50/60">
+              <td colspan="6" class="px-6 py-4">
+                <div class="space-y-4">
+
+                  <!-- Feedback card -->
+                  <div *ngIf="sub.doctor_feedback" class="bg-white rounded-lg border-l-4 border-orange-400 shadow-sm p-4">
+                    <p class="text-xs font-bold text-gray-400 uppercase tracking-wide mb-1">Supervisor Feedback</p>
+                    <p class="text-sm text-gray-800">{{ sub.doctor_feedback }}</p>
+                  </div>
+
+                  <!-- Edit form: Diagnosis -->
+                  <div *ngIf="sub.submission_type === 'Diagnosis'" class="space-y-3">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      <div>
+                        <label class="block text-xs font-bold text-gray-600 mb-1 uppercase tracking-wide">Diagnosis Type</label>
+                        <input type="text" [(ngModel)]="resubmitForm['diagnosis_type']"
+                               class="w-full bg-white text-gray-900 border border-gray-300 rounded-lg py-2 px-3 text-sm focus:ring-2 focus:ring-royal outline-none" />
+                      </div>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      <div>
+                        <label class="block text-xs font-bold text-gray-600 mb-1 uppercase tracking-wide">Clinical Findings</label>
+                        <textarea rows="3" [(ngModel)]="resubmitForm['clinical_findings']"
+                                  class="w-full bg-white text-gray-900 border border-gray-300 rounded-lg py-2 px-3 text-sm focus:ring-2 focus:ring-royal outline-none"></textarea>
+                      </div>
+                      <div>
+                        <label class="block text-xs font-bold text-gray-600 mb-1 uppercase tracking-wide">Radiographic Findings</label>
+                        <textarea rows="3" [(ngModel)]="resubmitForm['radiographic_findings']"
+                                  class="w-full bg-white text-gray-900 border border-gray-300 rounded-lg py-2 px-3 text-sm focus:ring-2 focus:ring-royal outline-none"></textarea>
+                      </div>
+                    </div>
+                    <div>
+                      <label class="block text-xs font-bold text-gray-600 mb-1 uppercase tracking-wide">Progress Note</label>
+                      <textarea rows="3" [(ngModel)]="resubmitForm['progress_note']"
+                                class="w-full bg-white text-gray-900 border border-gray-300 rounded-lg py-2 px-3 text-sm focus:ring-2 focus:ring-royal outline-none"></textarea>
+                    </div>
+                  </div>
+
+                  <!-- Edit form: Treatment -->
+                  <div *ngIf="sub.submission_type === 'Treatment'" class="space-y-3">
+                    <div>
+                      <label class="block text-xs font-bold text-gray-600 mb-1 uppercase tracking-wide">Treatment Type</label>
+                      <input type="text" [(ngModel)]="resubmitForm['treatment_type']"
+                             class="w-full bg-white text-gray-900 border border-gray-300 rounded-lg py-2 px-3 text-sm focus:ring-2 focus:ring-royal outline-none" />
+                    </div>
+                    <div>
+                      <label class="block text-xs font-bold text-gray-600 mb-1 uppercase tracking-wide">Treatment Note</label>
+                      <textarea rows="4" [(ngModel)]="resubmitForm['treatment_note']"
+                                class="w-full bg-white text-gray-900 border border-gray-300 rounded-lg py-2 px-3 text-sm focus:ring-2 focus:ring-royal outline-none"></textarea>
+                    </div>
+                  </div>
+
+                  <p *ngIf="resubmitError" class="text-sm text-red-600">{{ resubmitError }}</p>
+
+                  <!-- Actions -->
+                  <div class="flex items-center gap-3">
+                    <button (click)="resubmit(sub)" [disabled]="isResubmitting"
+                            class="bg-royal hover:bg-[#2c5282] text-white font-bold py-2 px-6 rounded-lg text-sm transition-colors disabled:opacity-60">
+                      {{ isResubmitting ? 'Resubmitting…' : 'Resubmit for Review' }}
+                    </button>
+                    <button (click)="requestWithdraw(sub)"
+                            class="border border-gray-300 text-gray-600 hover:bg-gray-50 font-medium py-2 px-4 rounded-lg text-sm transition-colors">
+                      Withdraw Submission
+                    </button>
+                  </div>
+                </div>
+              </td>
+            </tr>
+
+          </ng-container>
+
+          <tr *ngIf="filteredSubmissions.length === 0">
+            <td colspan="6" class="px-6 py-10 text-center text-sm text-gray-500">No procedure notes found.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+
+<!-- Add Note Modal -->
+<div *ngIf="isAddModalOpen" class="fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-50">
+  <div class="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] flex flex-col">
+    <div class="flex items-center justify-between p-4 border-b">
+      <h3 class="text-xl font-semibold text-royal">Add a Procedure Note</h3>
+      <button (click)="isAddModalOpen = false" class="text-gray-400 hover:text-gray-600">
+        <span class="material-symbols-outlined text-2xl">close</span>
+      </button>
+    </div>
+    <div class="p-6 overflow-y-auto flex-1">
+      <div *ngIf="noteError" class="mb-4 p-3 bg-red-50 border border-red-200 rounded-md text-sm text-red-700">
+        {{ noteError }}
+      </div>
+      <div class="space-y-4">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Patient <span class="text-red-500">*</span></label>
+            <select [(ngModel)]="noteForm.patientId"
+                    class="mt-1 block w-full bg-white text-gray-900 border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-gold focus:border-gold sm:text-sm">
+              <option value="">Select patient...</option>
+              <option *ngFor="let p of patients" [value]="p.id">{{ p.name }}</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Diagnosis Type <span class="text-red-500">*</span></label>
+            <input type="text" [(ngModel)]="noteForm.diagnosisType" placeholder="e.g. Caries, Periodontal..."
+                   class="mt-1 block w-full bg-white text-gray-900 border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-gold focus:border-gold sm:text-sm" />
+          </div>
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Clinical Findings <span class="text-red-500">*</span></label>
+          <textarea rows="3" [(ngModel)]="noteForm.clinicalFindings" placeholder="Describe clinical findings..."
+                    class="mt-1 block w-full bg-white text-gray-900 border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-gold focus:border-gold sm:text-sm"></textarea>
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Radiographic Findings <span class="text-red-500">*</span></label>
+          <textarea rows="3" [(ngModel)]="noteForm.radiographicFindings" placeholder="Describe radiographic findings..."
+                    class="mt-1 block w-full bg-white text-gray-900 border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-gold focus:border-gold sm:text-sm"></textarea>
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Progress Note <span class="text-red-500">*</span></label>
+          <textarea rows="3" [(ngModel)]="noteForm.progressNote" placeholder="Describe progress and plan..."
+                    class="mt-1 block w-full bg-white text-gray-900 border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-gold focus:border-gold sm:text-sm"></textarea>
+        </div>
+      </div>
+    </div>
+    <div class="flex justify-end items-center gap-3 p-4 bg-gray-50 border-t rounded-b-lg">
+      <button (click)="isAddModalOpen = false" class="text-gray-600 py-2 px-4 rounded-lg text-sm font-medium hover:bg-gray-100">
+        Cancel
+      </button>
+      <button (click)="submitNote()" [disabled]="isSavingNote"
+              class="bg-royal text-white py-2 px-6 rounded-lg text-sm font-medium hover:bg-[#2c5282] disabled:opacity-60">
+        {{ isSavingNote ? 'Submitting…' : 'Submit for Approval' }}
+      </button>
+    </div>
+  </div>
+</div>

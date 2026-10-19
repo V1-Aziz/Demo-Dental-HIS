@@ -1,0 +1,421 @@
+<div class="bg-white rounded-lg shadow-md p-4">
+
+  <!-- ── Tab Card Group ────────────────────────────────────────────── -->
+  <app-tab-card-group
+    [tabs]="historyTabs"
+    [activeTab]="activeHistoryTab"
+    (tabChange)="setHistoryTab($any($event))"
+    class="mb-3 block"
+  ></app-tab-card-group>
+
+  <!-- ── Shared Toolbar ────────────────────────────────────────────── -->
+  <div class="mb-3 flex items-center gap-3">
+    <div class="relative flex-1">
+      <span class="absolute inset-y-0 left-0 flex items-center pl-3">
+        <span class="material-symbols-outlined text-xl text-gray-400">search</span>
+      </span>
+      <input type="text"
+             [placeholder]="activeHistoryTab === 'activity' ? 'Search by item name, ID, or user...' : 'Search by item name or category...'"
+             [ngModel]="currentSearchTerm"
+             (ngModelChange)="currentSearchTerm = $event"
+             class="w-full pl-10 pr-4 py-1.5 text-sm border border-gray-300 bg-white text-gray-900 rounded-lg shadow-sm focus:ring-2 focus:ring-gold/50 outline-none" />
+    </div>
+    <div class="relative shrink-0">
+      <button type="button"
+              (click)="openFilterModal()"
+              [class]="'relative flex items-center justify-center py-2 px-2.5 rounded-lg border transition-colors ' + (isFilterActive ? 'bg-[#E6F1FB] border-[#378ADD] text-[#185FA5]' : 'bg-white border-gray-300 text-gray-700 hover:bg-[#E6F1FB] hover:border-[#378ADD] hover:text-[#185FA5]')">
+        <svg width="15" height="15" viewBox="0 0 16 16" fill="none">
+          <path d="M2 4h12M4 8h8M6 12h4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+        </svg>
+        <span *ngIf="isFilterActive"
+              class="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-[#378ADD]"
+              style="border:1.5px solid #e2e8f0"></span>
+      </button>
+    </div>
+  </div>
+
+  <!-- ── Activity History Tab ──────────────────────────────────────── -->
+  <ng-container *ngIf="activeHistoryTab === 'activity'">
+
+    <div *ngIf="isLoadingHistory" class="py-10 text-center text-gray-400">Loading...</div>
+
+    <div *ngIf="!isLoadingHistory && historyError" class="py-10 text-center text-sm">
+      <span class="text-red-500">{{ historyError }}</span>
+      <button (click)="loadActivityHistory()"
+              class="ml-3 text-xs text-blue-600 hover:underline font-medium">Retry</button>
+    </div>
+
+    <ng-container *ngIf="!isLoadingHistory && !historyError">
+      <div class="overflow-x-auto">
+        <table class="w-full" style="table-layout:fixed">
+          <colgroup>
+            <col style="width:18%"> <!-- Item Name -->
+            <col style="width:9%">  <!-- Quantity -->
+            <col style="width:10%"> <!-- Item ID -->
+            <col style="width:12%"> <!-- Type -->
+            <col style="width:11%"> <!-- Expire Date -->
+            <col style="width:14%"> <!-- Register Date -->
+            <col style="width:17%"> <!-- Assigned By -->
+            <col style="width:9%">  <!-- Status -->
+          </colgroup>
+          <thead class="bg-gray-50">
+            <tr>
+              <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Item Name</th>
+              <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Quantity</th>
+              <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Item ID</th>
+              <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
+              <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Expire Date</th>
+              <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Register Date</th>
+              <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Assigned By</th>
+              <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+            </tr>
+          </thead>
+          <tbody class="bg-white divide-y divide-gray-200">
+            <ng-container>
+              <tr *ngFor="let log of pagedLogs" class="hover:bg-gray-50 transition-colors">
+                <td class="px-4 py-3 text-sm font-medium text-gray-900" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ log.itemName }}</td>
+                <td [class]="'px-4 py-3 text-sm whitespace-nowrap ' + log.quantityClass">{{ log.quantityDisplay }}</td>
+                <td class="px-4 py-3 text-sm text-gray-500 font-mono whitespace-nowrap">{{ log.itemId }}</td>
+                <td class="px-4 py-3 text-sm text-gray-500 whitespace-nowrap">{{ log.type }}</td>
+                <td class="px-4 py-3 text-sm text-gray-500 whitespace-nowrap">{{ log.expireDate }}</td>
+                <td class="px-4 py-3 text-sm text-gray-500 whitespace-nowrap">{{ log.registerDate }}</td>
+                <td class="px-4 py-3 text-sm text-gray-500" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ log.assignedBy }}</td>
+                <td class="px-4 py-3 whitespace-nowrap">
+                  <span [class]="'flex items-center gap-1 text-sm font-semibold ' + (log.direction === 'In' ? 'text-green-600' : 'text-red-600')">
+                    <span class="material-symbols-outlined text-base">{{ log.direction === 'In' ? 'arrow_downward' : 'arrow_forward' }}</span>
+                    {{ log.direction }}
+                  </span>
+                </td>
+              </tr>
+              <tr *ngIf="pagedLogs.length === 0">
+                <td colspan="8" class="px-6 py-10 text-center text-gray-500">No activity found.</td>
+              </tr>
+            </ng-container>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Pagination bar -->
+      <div class="flex items-center justify-between px-4 py-1.5 border-t text-xs text-gray-600">
+        <div class="flex items-center gap-2">
+          <span class="text-gray-500">Rows:</span>
+          <select [ngModel]="pageSize" (ngModelChange)="onPageSizeChange($event)"
+                  class="border border-gray-300 rounded px-2 py-1 text-sm bg-white outline-none focus:ring-2 focus:ring-gold/50">
+            <option *ngFor="let s of pageSizeOptions" [value]="s">{{ s }}</option>
+          </select>
+        </div>
+        <div class="flex items-center gap-1">
+          <span class="text-gray-500 text-xs">{{ pageRangeStart }}–{{ pageRangeEnd }} of {{ totalItems }}</span>
+          <button (click)="goToPage(currentPage - 1)" [disabled]="currentPage <= 1"
+                  class="p-1 rounded hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed">
+            <span class="material-symbols-outlined text-base leading-none">chevron_left</span>
+          </button>
+          <span class="font-medium text-xs">{{ currentPage }} / {{ totalPages }}</span>
+          <button (click)="goToPage(currentPage + 1)" [disabled]="currentPage >= totalPages"
+                  class="p-1 rounded hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed">
+            <span class="material-symbols-outlined text-base leading-none">chevron_right</span>
+          </button>
+        </div>
+      </div>
+    </ng-container>
+
+  </ng-container>
+
+  <!-- ── Removed Items Tab ──────────────────────────────────────────── -->
+  <ng-container *ngIf="activeHistoryTab === 'removed'">
+
+    <div *ngIf="removedItemsLoading" class="py-10 text-center text-gray-400 text-sm">Loading...</div>
+
+    <div *ngIf="!removedItemsLoading && removedItemsError" class="py-10 text-center text-sm">
+      <span class="text-red-500">{{ removedItemsError }}</span>
+      <button (click)="loadRemovedItems()"
+              class="ml-3 text-xs text-blue-600 hover:underline font-medium">Retry</button>
+    </div>
+
+    <ng-container *ngIf="!removedItemsLoading && !removedItemsError">
+      <div class="overflow-x-auto">
+        <table class="w-full" style="table-layout:fixed">
+          <colgroup>
+            <col style="width:27%"> <!-- Item Name -->
+            <col style="width:15%"> <!-- Category -->
+            <col style="width:17%"> <!-- Removal Reason -->
+            <col style="width:11%"> <!-- Quantity Removed -->
+            <col style="width:30%"> <!-- Removed At -->
+          </colgroup>
+          <thead class="bg-gray-50">
+            <tr>
+              <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Item Name</th>
+              <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Category</th>
+              <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Removal Reason</th>
+              <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Qty Removed</th>
+              <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Removed At</th>
+            </tr>
+          </thead>
+          <tbody class="bg-white divide-y divide-gray-200">
+            <tr *ngIf="removedPagedItems.length === 0">
+              <td colspan="5" class="px-6 py-10 text-center text-gray-500 text-sm">
+                {{ removedHasActiveFilters ? 'No removed items match these filters.' : 'No items have been removed yet.' }}
+              </td>
+            </tr>
+            <tr *ngFor="let item of removedPagedItems" class="hover:bg-gray-50 transition-colors">
+              <td class="px-4 py-3 text-sm font-medium text-gray-900" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ item.item_name }}</td>
+              <td class="px-4 py-3 text-sm text-gray-500 whitespace-nowrap">{{ item.category }}</td>
+              <td class="px-4 py-3 whitespace-nowrap">
+                <span *ngIf="item.removal_reason === 'Expired'"
+                      class="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-red-100 text-red-800">
+                  Expired
+                </span>
+                <span *ngIf="item.removal_reason === 'Out of Stock'"
+                      class="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-orange-100 text-orange-800">
+                  Out of Stock
+                </span>
+              </td>
+              <td class="px-4 py-3 text-sm text-gray-500 whitespace-nowrap">
+                {{ item.quantity_removed !== null ? item.quantity_removed : '—' }}
+              </td>
+              <td class="px-4 py-3 text-sm text-gray-500 whitespace-nowrap">{{ formatRemovedAt(item.removed_at) }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Pagination bar -->
+      <div class="flex items-center justify-between px-4 py-1.5 border-t text-xs text-gray-600">
+        <div class="flex items-center gap-2">
+          <span class="text-gray-500">Rows:</span>
+          <select [ngModel]="removedPageSize" (ngModelChange)="onRemovedPageSizeChange($event)"
+                  class="border border-gray-300 rounded px-2 py-1 text-sm bg-white outline-none focus:ring-2 focus:ring-gold/50">
+            <option *ngFor="let s of removedPageSizeOptions" [value]="s">{{ s }}</option>
+          </select>
+        </div>
+        <div class="flex items-center gap-1">
+          <span class="text-gray-500 text-xs">{{ removedPageRangeStart }}–{{ removedPageRangeEnd }} of {{ removedTotalItems }}</span>
+          <button (click)="goToRemovedPage(removedCurrentPage - 1)" [disabled]="removedCurrentPage <= 1"
+                  class="p-1 rounded hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed">
+            <span class="material-symbols-outlined text-base leading-none">chevron_left</span>
+          </button>
+          <span class="font-medium text-xs">{{ removedCurrentPage }} / {{ removedTotalPages }}</span>
+          <button (click)="goToRemovedPage(removedCurrentPage + 1)" [disabled]="removedCurrentPage >= removedTotalPages"
+                  class="p-1 rounded hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed">
+            <span class="material-symbols-outlined text-base leading-none">chevron_right</span>
+          </button>
+        </div>
+      </div>
+    </ng-container>
+
+  </ng-container>
+
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════════
+     ACTIVITY HISTORY FILTER MODAL
+     ══════════════════════════════════════════════════════════════════ -->
+<div *ngIf="filterPopupOpen" class="fixed inset-0 z-50 flex items-center justify-center" style="background:rgba(0,0,0,0.45)" (click)="closeFilterPopup()">
+  <div class="bg-white rounded-xl shadow-2xl flex flex-col" style="width:480px;max-height:90vh" (click)="$event.stopPropagation()">
+    <div class="flex items-center justify-between px-6 py-4 border-b">
+      <div class="flex items-center gap-2">
+        <svg width="18" height="18" viewBox="0 0 16 16" fill="none">
+          <path d="M2 4h12M4 8h8M6 12h4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+        </svg>
+        <h2 class="text-lg font-bold text-gray-800">Filters</h2>
+      </div>
+      <button (click)="closeFilterPopup()" class="text-gray-400 hover:text-gray-600">
+        <span class="material-symbols-outlined">close</span>
+      </button>
+    </div>
+
+    <div class="px-6 py-4 overflow-y-auto flex-1">
+
+      <!-- Transaction Type -->
+      <div class="mb-3.5">
+        <div class="text-[11px] font-medium text-gray-500 uppercase tracking-wider mb-1.5">Transaction Type</div>
+        <select [(ngModel)]="draft.type"
+                class="w-full rounded-md px-2 text-[12px] bg-gray-50 text-gray-800 outline-none"
+                style="height:30px;border:0.5px solid #d1d5db">
+          <option value="All">All</option>
+          <option value="Deposit">Deposit</option>
+          <option value="Withdraw">Withdraw</option>
+        </select>
+      </div>
+
+      <!-- User -->
+      <div class="mb-3.5">
+        <div class="text-[11px] font-medium text-gray-500 uppercase tracking-wider mb-1.5">User</div>
+        <select [(ngModel)]="draft.user"
+                class="w-full rounded-md px-2 text-[12px] bg-gray-50 text-gray-800 outline-none"
+                style="height:30px;border:0.5px solid #d1d5db">
+          <option value="All">All</option>
+          <option *ngFor="let u of uniqueUsers" [value]="u">{{ u }}</option>
+        </select>
+      </div>
+
+      <hr style="border:none;border-top:0.5px solid #e5e7eb;margin:0 0 14px 0">
+
+      <!-- Date -->
+      <div class="mb-1">
+        <div class="text-[11px] font-medium text-gray-500 uppercase tracking-wider mb-1.5">Date</div>
+        <div class="rounded-md p-2.5" style="background:#f3f4f6">
+
+          <div class="flex rounded-md overflow-hidden mb-2.5" style="border:0.5px solid #d1d5db">
+            <button type="button" (click)="draft.dateMode = 'specific'; onDateModeChange()"
+                    [class]="'flex-1 text-[11px] border-none cursor-pointer transition-colors ' + (draft.dateMode === 'specific' ? 'bg-[#1D3557] text-white' : 'bg-white text-gray-500 hover:bg-gray-50')"
+                    style="height:27px">Specific date</button>
+            <button type="button" (click)="draft.dateMode = 'range'; onDateModeChange()"
+                    [class]="'flex-1 text-[11px] border-none cursor-pointer transition-colors ' + (draft.dateMode === 'range' ? 'bg-[#1D3557] text-white' : 'bg-white text-gray-500 hover:bg-gray-50')"
+                    style="height:27px">Date range</button>
+          </div>
+
+          <div *ngIf="draft.dateMode === 'specific'">
+            <label class="block text-[10px] text-gray-500 mb-1">Select date</label>
+            <input type="date" [(ngModel)]="draft.date"
+                   class="w-full rounded-md px-1.5 text-[11px] bg-white text-gray-800 outline-none"
+                   style="height:28px;border:0.5px solid #d1d5db">
+          </div>
+
+          <div *ngIf="draft.dateMode === 'range'" class="flex gap-1.5">
+            <div class="flex-1">
+              <label class="block text-[10px] text-gray-500 mb-1">From</label>
+              <input type="date" [(ngModel)]="draft.dateFrom"
+                     class="w-full rounded-md px-1.5 text-[11px] bg-white text-gray-800 outline-none"
+                     style="height:28px;border:0.5px solid #d1d5db">
+            </div>
+            <div class="flex-1">
+              <label class="block text-[10px] text-gray-500 mb-1">To</label>
+              <input type="date" [(ngModel)]="draft.dateTo"
+                     class="w-full rounded-md px-1.5 text-[11px] bg-white text-gray-800 outline-none"
+                     style="height:28px;border:0.5px solid #d1d5db">
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+    </div>
+
+    <div class="flex justify-between gap-3 px-6 py-4 border-t">
+      <button (click)="clearAllFilters()" class="px-4 py-2 rounded-lg border border-gray-300 text-sm text-gray-700 hover:bg-gray-50">Clear all</button>
+      <button (click)="applyFilters()" class="px-4 py-2 rounded-lg text-sm font-medium bg-royal text-white hover:bg-[#2c5282]">Apply</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════════
+     REMOVED ITEMS FILTER MODAL
+     ══════════════════════════════════════════════════════════════════ -->
+<div *ngIf="removedFilterOpen" class="fixed inset-0 z-50 flex items-center justify-center" style="background:rgba(0,0,0,0.45)" (click)="closeRemovedFilter()">
+  <div class="bg-white rounded-xl shadow-2xl flex flex-col" style="width:480px;max-height:90vh" (click)="$event.stopPropagation()">
+
+    <!-- Header -->
+    <div class="flex items-center justify-between px-6 py-4 border-b">
+      <div class="flex items-center gap-2">
+        <svg width="18" height="18" viewBox="0 0 16 16" fill="none">
+          <path d="M2 4h12M4 8h8M6 12h4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+        </svg>
+        <h2 class="text-lg font-bold text-gray-800">Filters</h2>
+      </div>
+      <button (click)="closeRemovedFilter()" class="text-gray-400 hover:text-gray-600">
+        <span class="material-symbols-outlined">close</span>
+      </button>
+    </div>
+
+    <!-- Body -->
+    <div class="px-6 py-4 overflow-y-auto flex-1">
+
+      <!-- Section 1: Category -->
+      <div class="mb-3.5">
+        <div class="text-[11px] font-medium text-gray-500 uppercase tracking-wider mb-1.5">Category</div>
+        <div class="space-y-1.5">
+          <label class="flex items-center gap-2 cursor-pointer">
+            <input type="checkbox" [(ngModel)]="removedDraft.catConsumable" style="accent-color:#378ADD;cursor:pointer">
+            <span class="text-[12px] text-gray-700">Consumable</span>
+          </label>
+          <label class="flex items-center gap-2 cursor-pointer">
+            <input type="checkbox" [(ngModel)]="removedDraft.catEquipment" style="accent-color:#378ADD;cursor:pointer">
+            <span class="text-[12px] text-gray-700">Equipment</span>
+          </label>
+          <label class="flex items-center gap-2 cursor-pointer">
+            <input type="checkbox" [(ngModel)]="removedDraft.catMedication" style="accent-color:#378ADD;cursor:pointer">
+            <span class="text-[12px] text-gray-700">Medication</span>
+          </label>
+          <label class="flex items-center gap-2 cursor-pointer">
+            <input type="checkbox" [(ngModel)]="removedDraft.catInstrument" style="accent-color:#378ADD;cursor:pointer">
+            <span class="text-[12px] text-gray-700">Tool / Instrument</span>
+          </label>
+          <label class="flex items-center gap-2 cursor-pointer">
+            <input type="checkbox" [(ngModel)]="removedDraft.catProtective" style="accent-color:#378ADD;cursor:pointer">
+            <span class="text-[12px] text-gray-700">Protective Gear</span>
+          </label>
+        </div>
+      </div>
+
+      <hr style="border:none;border-top:0.5px solid #e5e7eb;margin:0 0 14px 0">
+
+      <!-- Section 2: Removal Reason -->
+      <div class="mb-3.5">
+        <div class="text-[11px] font-medium text-gray-500 uppercase tracking-wider mb-1.5">Removal Reason</div>
+        <div class="space-y-1.5">
+          <label class="flex items-center gap-2 cursor-pointer">
+            <input type="checkbox" [(ngModel)]="removedDraft.reasonExpired" style="accent-color:#378ADD;cursor:pointer">
+            <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-red-100 text-red-800">Expired</span>
+          </label>
+          <label class="flex items-center gap-2 cursor-pointer">
+            <input type="checkbox" [(ngModel)]="removedDraft.reasonOutOfStock" style="accent-color:#378ADD;cursor:pointer">
+            <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-orange-100 text-orange-800">Out of Stock</span>
+          </label>
+        </div>
+      </div>
+
+      <hr style="border:none;border-top:0.5px solid #e5e7eb;margin:0 0 14px 0">
+
+      <!-- Section 3: Removed At -->
+      <div class="mb-1">
+        <div class="text-[11px] font-medium text-gray-500 uppercase tracking-wider mb-1.5">Removed At</div>
+        <div class="rounded-md p-2.5" style="background:#f3f4f6">
+
+          <!-- Mode toggle -->
+          <div class="flex rounded-md overflow-hidden mb-2.5" style="border:0.5px solid #d1d5db">
+            <button type="button" (click)="removedDraft.dateMode = 'specific'; onRemovedDateModeChange()"
+                    [class]="'flex-1 text-[11px] border-none cursor-pointer transition-colors ' + (removedDraft.dateMode === 'specific' ? 'bg-[#1D3557] text-white' : 'bg-white text-gray-500 hover:bg-gray-50')"
+                    style="height:27px">Specific date</button>
+            <button type="button" (click)="removedDraft.dateMode = 'range'; onRemovedDateModeChange()"
+                    [class]="'flex-1 text-[11px] border-none cursor-pointer transition-colors ' + (removedDraft.dateMode === 'range' ? 'bg-[#1D3557] text-white' : 'bg-white text-gray-500 hover:bg-gray-50')"
+                    style="height:27px">Date range</button>
+          </div>
+
+          <!-- Single day -->
+          <div *ngIf="removedDraft.dateMode === 'specific'">
+            <label class="block text-[10px] text-gray-500 mb-1">Date</label>
+            <input type="date" [(ngModel)]="removedDraft.date"
+                   class="w-full rounded-md px-1.5 text-[11px] bg-white text-gray-800 outline-none"
+                   style="height:28px;border:0.5px solid #d1d5db">
+          </div>
+
+          <!-- Range -->
+          <div *ngIf="removedDraft.dateMode === 'range'" class="flex gap-1.5">
+            <div class="flex-1">
+              <label class="block text-[10px] text-gray-500 mb-1">From</label>
+              <input type="date" [(ngModel)]="removedDraft.dateFrom"
+                     class="w-full rounded-md px-1.5 text-[11px] bg-white text-gray-800 outline-none"
+                     style="height:28px;border:0.5px solid #d1d5db">
+            </div>
+            <div class="flex-1">
+              <label class="block text-[10px] text-gray-500 mb-1">To</label>
+              <input type="date" [(ngModel)]="removedDraft.dateTo"
+                     class="w-full rounded-md px-1.5 text-[11px] bg-white text-gray-800 outline-none"
+                     style="height:28px;border:0.5px solid #d1d5db">
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Footer -->
+    <div class="flex justify-between gap-3 px-6 py-4 border-t">
+      <button (click)="clearRemovedFilters()" class="px-4 py-2 rounded-lg border border-gray-300 text-sm text-gray-700 hover:bg-gray-50">Clear all</button>
+      <button (click)="applyRemovedFilters()" class="px-4 py-2 rounded-lg text-sm font-medium bg-royal text-white hover:bg-[#2c5282]">Apply</button>
+    </div>
+
+  </div>
+</div>

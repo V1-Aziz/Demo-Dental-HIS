@@ -1,0 +1,98 @@
+<div class="space-y-6">
+
+  <!-- Header row -->
+  <div class="flex items-center justify-between">
+    <button (click)="goBack()"
+            class="flex items-center gap-1 text-sm text-royal hover:text-gold transition-colors">
+      <span class="material-symbols-outlined text-base leading-none">arrow_back</span>
+      Back to Reports Menu
+    </button>
+    <button (click)="exportOpen = true"
+            class="flex items-center gap-1.5 bg-royal text-white border border-royal rounded-lg px-3 py-1.5 text-sm font-semibold hover:bg-royal/90 transition-colors">
+      <span class="material-symbols-outlined text-base leading-none">download</span>
+      Export
+    </button>
+  </div>
+
+  <app-export-modal
+    [open]="exportOpen"
+    [reportKey]="reportKey"
+    [contextSubtitle]="exportSubtitle"
+    [filters]="exportFilters"
+    (closed)="exportOpen = false">
+  </app-export-modal>
+
+  <!-- Title -->
+  <div>
+    <h2 class="text-2xl font-bold text-gray-800">New Patient Registrations</h2>
+    <p class="text-sm text-gray-500 mt-0.5">Tracks first-time patient file creation</p>
+  </div>
+
+  <!-- Filter row -->
+  <div class="flex items-center gap-3">
+    <label class="text-sm font-medium text-gray-600">Date range:</label>
+    <select [(ngModel)]="selectedRange" (ngModelChange)="loadData()"
+            class="border border-gray-300 rounded-lg py-1.5 px-3 text-sm text-gray-700 bg-white focus:outline-none focus:ring-2 focus:ring-gold/50">
+      <option *ngFor="let opt of rangeOptions" [value]="opt.value">{{ opt.label }}</option>
+    </select>
+  </div>
+
+  <!-- Loading / error -->
+  <div *ngIf="isLoading" class="flex items-center justify-center h-32 text-sm text-gray-400">
+    <span class="material-symbols-outlined animate-spin text-lg mr-2">progress_activity</span>
+    Loading…
+  </div>
+  <div *ngIf="hasError && !isLoading" class="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-4 py-3">
+    Failed to load data. Please try again.
+  </div>
+
+  <ng-container *ngIf="!isLoading && !hasError">
+
+    <!-- Metric cards -->
+    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+
+      <!-- Total -->
+      <div class="bg-slate-50 border border-gray-200 rounded-lg p-5">
+        <p class="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1">Total New Patients</p>
+        <p class="text-3xl font-bold text-gray-800">{{ summary.totalNewPatients }}</p>
+        <p [class]="'mt-1 text-sm font-semibold ' + changeClass">
+          {{ changeArrow }} {{ summary.percentChange | number:'1.0-0' }}% vs prior period
+        </p>
+      </div>
+
+      <!-- Avg / week -->
+      <div class="bg-slate-50 border border-gray-200 rounded-lg p-5">
+        <p class="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1">Avg Per Week</p>
+        <p class="text-3xl font-bold text-gray-800">{{ summary.avgPerWeek | number:'1.0-1' }}</p>
+      </div>
+
+      <!-- Peak day -->
+      <div class="bg-slate-50 border border-gray-200 rounded-lg p-5">
+        <p class="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1">Peak Day</p>
+        <p class="text-xl font-bold text-gray-800">{{ formattedPeakDay }}</p>
+        <p *ngIf="summary.peakDayCount" class="text-sm text-gray-500 mt-0.5">
+          {{ summary.peakDayCount }} registrations
+        </p>
+      </div>
+
+    </div>
+
+    <!-- Bar chart -->
+    <div class="bg-white border border-gray-200 rounded-lg p-5 shadow-sm">
+      <h3 class="text-sm font-semibold text-gray-600 mb-4 uppercase tracking-wide">Weekly Registration Count</h3>
+      <p *ngIf="weeklyData.length === 0" class="flex items-center justify-center h-48 text-sm text-gray-400">
+        No registrations in this period.
+      </p>
+      <div [style.display]="weeklyData.length === 0 ? 'none' : 'block'" style="height:280px; position:relative">
+        <canvas #barChart></canvas>
+      </div>
+    </div>
+
+    <!-- Note -->
+    <div class="text-xs text-gray-400 border-t pt-3">
+      Tracks first-time patient file creation by receptionists. Useful for staffing and capacity planning.
+    </div>
+
+  </ng-container>
+
+</div>

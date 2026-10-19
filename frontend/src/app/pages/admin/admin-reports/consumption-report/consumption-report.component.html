@@ -1,0 +1,118 @@
+<div class="space-y-6">
+
+  <!-- Header row -->
+  <div class="flex items-center justify-between">
+    <button (click)="goBack()"
+            class="flex items-center gap-1 text-sm text-royal hover:text-gold transition-colors">
+      <span class="material-symbols-outlined text-base leading-none">arrow_back</span>
+      Back to Reports Menu
+    </button>
+    <button (click)="exportOpen = true"
+            class="flex items-center gap-1.5 bg-royal text-white border border-royal rounded-lg px-3 py-1.5 text-sm font-semibold hover:bg-royal/90 transition-colors">
+      <span class="material-symbols-outlined text-base leading-none">download</span>
+      Export
+    </button>
+  </div>
+
+  <app-export-modal
+    [open]="exportOpen"
+    [reportKey]="reportKey"
+    [contextSubtitle]="exportSubtitle"
+    [filters]="exportFilters"
+    (closed)="exportOpen = false">
+  </app-export-modal>
+
+  <!-- Title -->
+  <div>
+    <h2 class="text-2xl font-bold text-gray-800">Consumption Report</h2>
+    <p class="text-sm text-gray-500 mt-0.5">Tracks material usage over a period</p>
+  </div>
+
+  <!-- Filter row -->
+  <div class="flex flex-wrap items-center gap-4">
+    <div class="flex items-center gap-2">
+      <label class="text-sm font-medium text-gray-600">Period:</label>
+      <select [(ngModel)]="selectedRange" (ngModelChange)="onFilterChange()"
+              class="border border-gray-300 rounded-lg py-1.5 px-3 text-sm text-gray-700 bg-white focus:outline-none focus:ring-2 focus:ring-gold/50">
+        <option *ngFor="let opt of rangeOptions" [value]="opt.value">{{ opt.label }}</option>
+      </select>
+    </div>
+    <div class="flex items-center gap-2">
+      <label class="text-sm font-medium text-gray-600">Category:</label>
+      <select [(ngModel)]="selectedCategory" (ngModelChange)="onFilterChange()"
+              class="border border-gray-300 rounded-lg py-1.5 px-3 text-sm text-gray-700 bg-white focus:outline-none focus:ring-2 focus:ring-gold/50">
+        <option value="">All</option>
+        <option *ngFor="let cat of allCategories" [value]="cat">{{ cat }}</option>
+      </select>
+    </div>
+  </div>
+
+  <!-- Loading / error -->
+  <div *ngIf="isLoading" class="flex items-center justify-center h-32 text-sm text-gray-400">
+    <span class="material-symbols-outlined animate-spin text-lg mr-2">progress_activity</span>
+    Loading…
+  </div>
+  <div *ngIf="hasError && !isLoading" class="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-4 py-3">
+    Failed to load data. Please try again.
+  </div>
+
+  <ng-container *ngIf="!isLoading && !hasError">
+
+    <!-- Metric cards -->
+    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div class="bg-slate-50 border border-gray-200 rounded-lg p-5">
+        <p class="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1">Total Items Withdrawn</p>
+        <p class="text-3xl font-bold text-gray-800">{{ summary.totalWithdrawn | number }}</p>
+      </div>
+
+      <div class="bg-slate-50 border border-gray-200 rounded-lg p-5">
+        <p class="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1">Top Consumed Item</p>
+        <ng-container *ngIf="summary.topConsumedItem; else emDashItem">
+          <p class="text-xl font-bold text-gray-800">{{ summary.topConsumedItem }}</p>
+          <p class="text-sm text-gray-500 mt-0.5">{{ summary.topConsumedQty | number }} units</p>
+        </ng-container>
+        <ng-template #emDashItem>
+          <p class="text-xl font-bold text-gray-400">&mdash;</p>
+        </ng-template>
+      </div>
+
+      <div class="bg-slate-50 border border-gray-200 rounded-lg p-5">
+        <p class="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1">Top Category</p>
+        <ng-container *ngIf="summary.topCategory; else emDashCat">
+          <p class="text-xl font-bold text-gray-800">{{ summary.topCategory }}</p>
+          <p class="text-sm text-gray-500 mt-0.5">{{ summary.topCategoryQty | number }} units</p>
+        </ng-container>
+        <ng-template #emDashCat>
+          <p class="text-xl font-bold text-gray-400">&mdash;</p>
+        </ng-template>
+      </div>
+    </div>
+
+    <!-- Chart -->
+    <div class="bg-white border border-gray-200 rounded-lg p-5 shadow-sm">
+      <div class="flex items-center justify-between mb-4 flex-wrap gap-3">
+        <h3 class="text-sm font-semibold text-gray-600 uppercase tracking-wide">Weekly Consumption by Category</h3>
+        <div *ngIf="legend.length > 0" class="flex flex-wrap items-center gap-3 text-xs text-gray-600">
+          <span *ngFor="let l of legend" class="flex items-center gap-1.5">
+            <span class="inline-block w-3 h-3 rounded-sm" [style.backgroundColor]="l.color"></span>
+            {{ l.name }}
+          </span>
+        </div>
+      </div>
+
+      <p *ngIf="weeklyData.length === 0" class="flex items-center justify-center h-48 text-sm text-gray-400">
+        No withdrawals in this period.
+      </p>
+      <div [style.display]="weeklyData.length === 0 ? 'none' : 'block'" style="height:280px; position:relative">
+        <canvas #barChart></canvas>
+      </div>
+    </div>
+
+    <!-- Note -->
+    <div class="text-xs text-gray-400 border-t pt-3">
+      Tracks withdrawal transactions from stock. Helps budget planning and identifies unusual consumption spikes.
+    </div>
+
+  </ng-container>
+
+</div>

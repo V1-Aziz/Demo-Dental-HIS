@@ -1,0 +1,86 @@
+<div class="space-y-8">
+
+  <!-- Today's Activities -->
+  <section>
+    <h2 class="text-xl font-semibold text-gray-700 mb-4">Today's Activities</h2>
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div *ngFor="let stat of stats"
+           class="bg-white rounded-lg shadow p-5 border-l-4 border-gold hover:-translate-y-1 transition-transform duration-200">
+        <h3 class="text-sm font-medium text-gray-500 mb-2">{{ stat.label }}</h3>
+        <div class="flex items-center">
+          <div [class]="stat.iconBg + ' ' + stat.iconColor + ' p-3 rounded-full'">
+            <span class="material-symbols-outlined text-2xl">{{ stat.icon }}</span>
+          </div>
+          <p class="ml-4 text-3xl font-bold text-royal">{{ stat.value }}</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Shortcuts -->
+  <section>
+    <h2 class="text-xl font-semibold text-gray-700 mb-4">Shortcuts</h2>
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <button (click)="goToPatients()"
+              class="bg-royal text-white text-left p-6 rounded-lg shadow-lg hover:shadow-xl hover:bg-[#2c5282] transition-all duration-300">
+        <h3 class="text-xl font-bold flex items-center justify-between">
+          Register a new patient
+          <span class="material-symbols-outlined text-2xl">arrow_forward</span>
+        </h3>
+        <p class="text-sm opacity-80 mt-1">Quickly add a new patient to the system.</p>
+      </button>
+      <button (click)="goToScheduling()"
+              class="bg-gold text-royal text-left p-6 rounded-lg shadow-lg hover:shadow-xl hover:bg-[#c6922b] transition-all duration-300">
+        <h3 class="text-xl font-bold flex items-center justify-between">
+          Register a new schedule
+          <span class="material-symbols-outlined text-2xl">arrow_forward</span>
+        </h3>
+        <p class="text-sm opacity-80 mt-1">Book a new appointment for a patient.</p>
+      </button>
+    </div>
+  </section>
+
+  <!-- Today's Appointments -->
+  <section>
+    <h2 class="text-xl font-semibold text-gray-700 mb-4">Today's Appointments</h2>
+    <div class="bg-white rounded-lg shadow-md overflow-hidden">
+      <div class="overflow-x-auto">
+        <table class="w-full">
+          <thead class="bg-gray-50">
+            <tr>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Patient Name</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">File No.</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Procedure</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Assigned Dr.</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Clinic No.</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Time</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Arrival</th>
+            </tr>
+          </thead>
+          <tbody class="bg-white divide-y divide-gray-200">
+            <tr *ngFor="let appt of appointments" class="hover:bg-gray-50 transition-colors">
+              <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{{ appt.patientName }}</td>
+              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ appt.fileNo }}</td>
+              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ appt.procedure }}</td>
+              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ appt.assignedDr }}</td>
+              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ appt.clinic }}</td>
+              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 font-mono">{{ appt.time }}</td>
+              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ appt.date }}</td>
+              <td class="px-6 py-4 text-sm">
+                <app-arrival-cell
+                  [appointmentId]="appt.appointmentId"
+                  [startTime]="appt.startTimeRaw"
+                  [arrivalStatus]="appt.arrivalStatus"
+                  [arrivedAt]="appt.arrivedAt"
+                  (arrivalChanged)="onArrivalChanged(appt, $event)"
+                ></app-arrival-cell>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+</div>

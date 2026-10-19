@@ -1,0 +1,221 @@
+<div class="min-h-screen bg-[#e2e8f0] flex items-center justify-center p-4">
+  <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden">
+
+    <!-- Header -->
+    <div class="bg-royal px-8 py-8 text-center">
+      <div class="w-14 h-14 bg-gold rounded-full flex items-center justify-center mx-auto mb-4">
+        <span class="material-symbols-outlined text-2xl text-royal">person_add</span>
+      </div>
+      <h1 class="text-xl font-black text-white tracking-widest uppercase">Create Account</h1>
+      <p class="text-white/60 text-[11px] mt-1 uppercase tracking-widest">
+        Najran University · College of Dentistry
+      </p>
+    </div>
+
+    <!-- Form -->
+    <div class="px-8 py-8">
+      <p class="text-sm text-gray-500 mb-6">
+        Submit your details for admin approval. You'll be notified once your account is activated.
+      </p>
+
+      <!-- Error -->
+      <div *ngIf="errorMessage"
+           class="mb-5 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl text-sm flex items-center gap-2">
+        <span class="material-symbols-outlined text-base flex-shrink-0">error</span>
+        {{ errorMessage }}
+      </div>
+
+      <form [formGroup]="form" (ngSubmit)="onSubmit()" class="space-y-4">
+
+        <!-- Name row -->
+        <div class="grid grid-cols-3 gap-3">
+          <div>
+            <label class="block text-xs font-black text-slate-500 uppercase tracking-widest mb-1">First Name</label>
+            <input formControlName="firstName" type="text"
+                   class="w-full px-3 py-2.5 bg-white text-gray-900 border border-gray-300 rounded-xl focus:ring-2 focus:ring-gold/40 focus:border-gold outline-none transition-all text-sm"
+                   [class.border-red-400]="hasError('firstName','required')"
+                   placeholder="Ali" />
+            <p *ngIf="hasError('firstName','required')" class="text-xs text-red-500 mt-0.5">Required</p>
+          </div>
+          <div>
+            <label class="block text-xs font-black text-slate-500 uppercase tracking-widest mb-1">Middle</label>
+            <input formControlName="middleName" type="text"
+                   class="w-full px-3 py-2.5 bg-white text-gray-900 border border-gray-300 rounded-xl focus:ring-2 focus:ring-gold/40 focus:border-gold outline-none transition-all text-sm"
+                   [class.border-red-400]="hasError('middleName','required')"
+                   placeholder="Omar" />
+            <p *ngIf="hasError('middleName','required')" class="text-xs text-red-500 mt-0.5">Required</p>
+          </div>
+          <div>
+            <label class="block text-xs font-black text-slate-500 uppercase tracking-widest mb-1">Last Name</label>
+            <input formControlName="lastName" type="text"
+                   class="w-full px-3 py-2.5 bg-white text-gray-900 border border-gray-300 rounded-xl focus:ring-2 focus:ring-gold/40 focus:border-gold outline-none transition-all text-sm"
+                   [class.border-red-400]="hasError('lastName','required')"
+                   placeholder="Al-Qahtani" />
+            <p *ngIf="hasError('lastName','required')" class="text-xs text-red-500 mt-0.5">Required</p>
+          </div>
+        </div>
+
+        <!-- Civil ID -->
+        <div>
+          <label class="block text-xs font-black text-slate-500 uppercase tracking-widest mb-1">Civil ID (National ID)</label>
+          <input formControlName="civilId" type="text" maxlength="10"
+                 class="w-full px-3 py-2.5 bg-white text-gray-900 border border-gray-300 rounded-xl focus:ring-2 focus:ring-gold/40 focus:border-gold outline-none transition-all text-sm"
+                 [class.border-red-400]="hasError('civilId','pattern') || hasError('civilId','required')"
+                 placeholder="1234567890" />
+          <p *ngIf="hasError('civilId','required')" class="text-xs text-red-500 mt-0.5">Required</p>
+          <p *ngIf="hasError('civilId','pattern')" class="text-xs text-red-500 mt-0.5">Must be exactly 10 digits</p>
+        </div>
+
+        <!-- Role -->
+        <div>
+          <label class="block text-xs font-black text-slate-500 uppercase tracking-widest mb-1">Requested Role</label>
+          <select formControlName="requestedRoleId"
+                  class="w-full px-3 py-2.5 bg-white text-gray-900 border border-gray-300 rounded-xl focus:ring-2 focus:ring-gold/40 focus:border-gold outline-none transition-all text-sm"
+                  [class.border-red-400]="hasError('requestedRoleId','required')">
+            <option [value]="null" disabled>
+              {{ isLoadingRoles ? 'Loading roles...' : 'Select a role' }}
+            </option>
+            <option *ngFor="let r of roles" [value]="r.role_id">{{ roleLabel(r.role_name) }}</option>
+          </select>
+          <p *ngIf="hasError('requestedRoleId','required')" class="text-xs text-red-500 mt-0.5">Required</p>
+        </div>
+
+        <!-- Password -->
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-black text-slate-500 uppercase tracking-widest mb-1">Password</label>
+            <div class="relative">
+              <input formControlName="password" [type]="showPassword ? 'text' : 'password'"
+                     class="w-full px-3 py-2.5 pr-10 bg-white text-gray-900 border border-gray-300 rounded-xl focus:ring-2 focus:ring-gold/40 focus:border-gold outline-none transition-all text-sm"
+                     [class.border-red-400]="hasError('password','required') || hasError('password','minlength') || hasError('password','passwordComplexity')"
+                     placeholder="Min. 8 chars" />
+              <button type="button" (click)="showPassword = !showPassword"
+                      class="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600">
+                <span class="material-symbols-outlined text-lg">{{ showPassword ? 'visibility_off' : 'visibility' }}</span>
+              </button>
+            </div>
+            <p *ngIf="hasError('password','minlength')" class="text-xs text-red-500 mt-0.5">Min 8 characters</p>
+            <p *ngIf="hasError('password','passwordComplexity')" class="text-xs text-red-500 mt-0.5">Must include a letter and a digit</p>
+          </div>
+          <div>
+            <label class="block text-xs font-black text-slate-500 uppercase tracking-widest mb-1">Confirm Password</label>
+            <div class="relative">
+              <input formControlName="confirmPassword" [type]="showConfirm ? 'text' : 'password'"
+                     class="w-full px-3 py-2.5 pr-10 bg-white text-gray-900 border border-gray-300 rounded-xl focus:ring-2 focus:ring-gold/40 focus:border-gold outline-none transition-all text-sm"
+                     [class.border-red-400]="form.hasError('passwordsMismatch') && form.get('confirmPassword')?.touched"
+                     placeholder="Repeat password" />
+              <button type="button" (click)="showConfirm = !showConfirm"
+                      class="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600">
+                <span class="material-symbols-outlined text-lg">{{ showConfirm ? 'visibility_off' : 'visibility' }}</span>
+              </button>
+            </div>
+            <p *ngIf="form.hasError('passwordsMismatch') && form.get('confirmPassword')?.touched"
+               class="text-xs text-red-500 mt-0.5">Passwords do not match</p>
+          </div>
+        </div>
+
+        <!-- Contacts -->
+        <div>
+          <label class="block text-xs font-black text-slate-500 uppercase tracking-widest mb-2">Contact Information</label>
+          <div formArrayName="contacts" class="space-y-2">
+            <ng-container *ngFor="let contact of contacts.controls; let i = index" [formGroupName]="i">
+
+              <!-- ── View mode ───────────────────────────────────────────── -->
+              <div *ngIf="!contact.value._isEditing"
+                   class="flex items-center justify-between px-3 py-2.5 border border-gray-200 rounded-lg hover:border-gray-300 transition-colors">
+                <div class="flex items-center gap-2.5 min-w-0">
+                  <span class="text-xs px-2 py-0.5 rounded-full font-medium flex-shrink-0"
+                        [class]="typeBadge(contact.value.contactType)">
+                    {{ contact.value.contactType }}
+                  </span>
+                  <span *ngIf="i === 0"
+                        class="text-xs font-semibold text-gold border border-gold/60 rounded px-1.5 py-0.5 flex-shrink-0">
+                    Primary
+                  </span>
+                  <span class="text-sm text-gray-700 truncate">{{ contact.value.value }}</span>
+                </div>
+                <div class="flex items-center gap-0.5 flex-shrink-0 ml-2">
+                  <button type="button" (click)="editContact(i)"
+                          class="p-1.5 text-gray-400 hover:text-royal rounded transition-colors" title="Edit">
+                    <span class="material-symbols-outlined text-base leading-none">edit</span>
+                  </button>
+                  <button *ngIf="i > 0" type="button" (click)="removeContact(i)"
+                          class="p-1.5 text-gray-400 hover:text-red-500 rounded transition-colors" title="Remove">
+                    <span class="material-symbols-outlined text-base leading-none">delete</span>
+                  </button>
+                </div>
+              </div>
+
+              <!-- ── Edit mode ───────────────────────────────────────────── -->
+              <div *ngIf="contact.value._isEditing"
+                   class="border border-gold/50 rounded-lg p-3 space-y-2.5 bg-amber-50/30">
+                <div class="flex items-center gap-2">
+                  <!-- Type select -->
+                  <div class="flex-shrink-0 w-36">
+                    <label class="text-xs font-medium text-gray-600 mb-0.5 block">Type</label>
+                    <select formControlName="contactType"
+                            class="w-full text-xs border rounded px-2 py-1.5 bg-white text-gray-900 outline-none focus:ring-2 focus:ring-gold/40"
+                            [class.border-red-400]="contactFieldError(i,'contactType')"
+                            [class.border-gray-300]="!contactFieldError(i,'contactType')">
+                      <option *ngFor="let t of contactTypeOptions" [value]="t">{{ t }}</option>
+                    </select>
+                  </div>
+                  <!-- Value input -->
+                  <div class="flex-1 min-w-0">
+                    <div class="flex items-center justify-between mb-0.5">
+                      <label class="text-xs font-medium text-gray-600">Value</label>
+                      <span *ngIf="i === 0"
+                            class="text-[10px] font-bold text-gold uppercase tracking-wide">Primary</span>
+                    </div>
+                    <input formControlName="value"
+                           [type]="contact.get('contactType')?.value === 'Email' ? 'email' : 'text'"
+                           [placeholder]="valuePlaceholder(contact.get('contactType')?.value)"
+                           class="w-full text-xs border rounded px-2 py-1.5 bg-white text-gray-900 outline-none focus:ring-2 focus:ring-gold/40"
+                           [class.border-red-400]="contactFieldError(i,'value')"
+                           [class.border-gray-300]="!contactFieldError(i,'value')" />
+                    <p *ngIf="contactFieldError(i,'value')" class="text-xs text-red-500 mt-0.5">Required</p>
+                  </div>
+                </div>
+                <!-- Save / Cancel -->
+                <div class="flex justify-end gap-2 pt-0.5">
+                  <button type="button" (click)="cancelContact(i)"
+                          class="text-xs px-3 py-1.5 border border-gray-300 rounded text-gray-600 hover:bg-gray-50 transition-colors">
+                    Cancel
+                  </button>
+                  <button type="button" (click)="saveContact(i)"
+                          class="text-xs px-3 py-1.5 bg-royal text-white rounded hover:bg-[#2c5282] transition-colors">
+                    Save contact
+                  </button>
+                </div>
+              </div>
+
+            </ng-container>
+          </div>
+
+          <!-- Add contact -->
+          <button type="button" (click)="addContact()"
+                  class="mt-2 w-full py-2 border-2 border-dashed border-gray-300 rounded-lg text-xs text-gray-500 hover:border-royal hover:text-royal transition-colors flex items-center justify-center gap-1">
+            <span class="material-symbols-outlined text-base leading-none">add</span>
+            Add contact
+          </button>
+        </div>
+
+        <!-- Submit -->
+        <button type="submit"
+                [disabled]="isLoading"
+                class="w-full bg-royal text-white font-black py-3 rounded-xl hover:bg-[#2c5282] transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 uppercase tracking-widest text-sm mt-2">
+          <span class="material-symbols-outlined text-xl">
+            {{ isLoading ? 'progress_activity' : 'send' }}
+          </span>
+          {{ isLoading ? 'Submitting...' : 'Submit Registration' }}
+        </button>
+
+      </form>
+
+      <div class="mt-5 text-center text-sm text-gray-500">
+        Already have an account?
+        <a routerLink="/login" class="ml-1 font-medium text-royal hover:text-royal/80">Sign in</a>
+      </div>
+    </div>
+  </div>
+</div>

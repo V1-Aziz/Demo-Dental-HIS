@@ -1,0 +1,98 @@
+<div class="space-y-6">
+
+  <!-- Header row -->
+  <div class="flex items-center justify-between">
+    <button (click)="goBack()"
+            class="flex items-center gap-1 text-sm text-royal hover:text-gold transition-colors">
+      <span class="material-symbols-outlined text-base leading-none">arrow_back</span>
+      Back to Reports Menu
+    </button>
+    <button (click)="exportOpen = true"
+            class="flex items-center gap-1.5 bg-royal text-white border border-royal rounded-lg px-3 py-1.5 text-sm font-semibold hover:bg-royal/90 transition-colors">
+      <span class="material-symbols-outlined text-base leading-none">download</span>
+      Export
+    </button>
+  </div>
+
+  <app-export-modal
+    [open]="exportOpen"
+    [reportKey]="reportKey"
+    [contextSubtitle]="exportSubtitle"
+    [filters]="exportFilters"
+    (closed)="exportOpen = false">
+  </app-export-modal>
+
+  <!-- Title -->
+  <div>
+    <h2 class="text-2xl font-bold text-gray-800">Supervisor Evaluation Summary</h2>
+    <p class="text-sm text-gray-500 mt-0.5">Approval quality by student</p>
+  </div>
+
+  <!-- Filter row -->
+  <div class="flex items-center gap-3">
+    <label class="text-sm font-medium text-gray-600">Supervisor:</label>
+    <select [(ngModel)]="selectedSupervisorId" (ngModelChange)="onFilterChange()"
+            class="border border-gray-300 rounded-lg py-1.5 px-3 text-sm text-gray-700 bg-white focus:outline-none focus:ring-2 focus:ring-gold/50">
+      <option *ngFor="let opt of supervisorOptions" [ngValue]="opt.employeeId">{{ opt.doctorName }}</option>
+    </select>
+  </div>
+
+  <!-- Loading / error -->
+  <div *ngIf="isLoading" class="flex items-center justify-center h-32 text-sm text-gray-400">
+    <span class="material-symbols-outlined animate-spin text-lg mr-2">progress_activity</span>
+    Loading…
+  </div>
+  <div *ngIf="hasError && !isLoading" class="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-4 py-3">
+    Failed to load data. Please try again.
+  </div>
+
+  <ng-container *ngIf="!isLoading && !hasError">
+
+    <!-- Metric cards -->
+    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div class="bg-slate-50 border border-gray-200 rounded-lg p-5">
+        <p class="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1">Students Evaluated</p>
+        <p class="text-3xl font-bold text-gray-800">{{ summary.studentsEvaluated | number }}</p>
+      </div>
+
+      <div class="bg-slate-50 border border-gray-200 rounded-lg p-5">
+        <p class="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1">Avg Clean Approval Rate</p>
+        <p class="text-3xl font-bold text-gray-800">{{ summary.avgCleanRate | number:'1.0-1' }}%</p>
+      </div>
+
+      <div class="bg-slate-50 border border-gray-200 rounded-lg p-5">
+        <p class="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1">Top Performer</p>
+        <ng-container *ngIf="summary.topPerformer; else emDash">
+          <p class="text-xl font-bold text-gray-800">{{ summary.topPerformer.name }}</p>
+          <p class="text-sm text-gray-500 mt-0.5">{{ summary.topPerformer.rate | number:'1.0-1' }}%</p>
+        </ng-container>
+        <ng-template #emDash>
+          <p class="text-xl font-bold text-gray-400">&mdash;</p>
+        </ng-template>
+      </div>
+    </div>
+
+    <!-- Chart -->
+    <div class="bg-white border border-gray-200 rounded-lg p-5 shadow-sm">
+      <div class="flex items-center justify-between mb-4 flex-wrap gap-3">
+        <h3 class="text-sm font-semibold text-gray-600 uppercase tracking-wide">Clean Approval Rate by Student</h3>
+        <p *ngIf="cappedNotice" class="text-xs text-gray-400">Showing top 15 students</p>
+      </div>
+
+      <p *ngIf="students.length === 0" class="flex items-center justify-center h-48 text-sm text-gray-400">
+        No evaluations available.
+      </p>
+      <div [style.display]="students.length === 0 ? 'none' : 'block'"
+           [style.height.px]="chartHeight" style="position:relative">
+        <canvas #barChart></canvas>
+      </div>
+    </div>
+
+    <!-- Note -->
+    <div class="text-xs text-gray-400 border-t pt-3">
+      "Clean approval rate" = treatments approved without requiring supervisor feedback/revision. Higher is better. Feeds into semester grading decisions.
+    </div>
+
+  </ng-container>
+
+</div>

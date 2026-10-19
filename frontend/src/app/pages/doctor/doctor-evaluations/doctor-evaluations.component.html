@@ -1,0 +1,477 @@
+<!-- ─── Main tab bar ──────────────────────────────────────────────────────── -->
+<div class="eval-tab-bar">
+  <div class="eval-tab-item" [class.active]="activeTab === 'reviews'"
+       (click)="setMainTab('reviews')">Reviews</div>
+  <div class="eval-tab-item" [class.active]="activeTab === 'gradebook'"
+       (click)="setMainTab('gradebook')">Gradebook</div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════════════════ -->
+<!-- REVIEWS TAB                                                                 -->
+<!-- ═══════════════════════════════════════════════════════════════════════════ -->
+<div *ngIf="activeTab === 'reviews'" class="space-y-6">
+
+  <!-- Stats cards -->
+  <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+    <div class="bg-white rounded-xl border border-gray-100 shadow-sm p-5 text-center">
+      <p class="text-3xl font-bold text-amber-500">{{ stats.pending_count }}</p>
+      <p class="text-sm text-gray-500 mt-1">Pending Review</p>
+    </div>
+    <div class="bg-white rounded-xl border border-gray-100 shadow-sm p-5 text-center">
+      <p class="text-3xl font-bold text-orange-500">{{ stats.revision_requested_count }}</p>
+      <p class="text-sm text-gray-500 mt-1">In Revision</p>
+    </div>
+    <div class="bg-white rounded-xl border border-gray-100 shadow-sm p-5 text-center">
+      <p class="text-3xl font-bold text-green-500">{{ stats.approved_today_count }}</p>
+      <p class="text-sm text-gray-500 mt-1">Approved Today</p>
+    </div>
+    <div class="bg-white rounded-xl border border-gray-100 shadow-sm p-5 text-center">
+      <p class="text-3xl font-bold text-red-500">{{ stats.rejected_today_count }}</p>
+      <p class="text-sm text-gray-500 mt-1">Rejected Today</p>
+    </div>
+  </div>
+
+  <!-- Filter dropdown + search -->
+  <div class="flex flex-col md:flex-row gap-3 items-start md:items-center">
+    <select
+      [(ngModel)]="filter"
+      (ngModelChange)="setFilter($event)"
+      class="px-3 py-2 bg-white text-gray-700 border border-gray-300 rounded-lg shadow-sm text-sm focus:ring-2 focus:ring-gold/50 outline-none min-w-[160px]">
+      <option *ngFor="let tab of filterTabs" [value]="tab.key">{{ tab.label }}</option>
+    </select>
+    <div class="relative flex-1 min-w-0">
+      <span class="absolute inset-y-0 left-0 flex items-center pl-3">
+        <span class="material-symbols-outlined text-xl text-gray-400">search</span>
+      </span>
+      <input type="text" placeholder="Search by student, patient, or procedure..."
+             [(ngModel)]="searchTerm"
+             class="w-full pl-10 pr-4 py-2 bg-white text-gray-900 border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-gold/50 outline-none text-sm" />
+    </div>
+  </div>
+
+  <!-- Loading -->
+  <div *ngIf="loading" class="text-center py-10 text-gray-400 text-sm">Loading…</div>
+
+  <!-- Queue -->
+  <div *ngIf="!loading" class="space-y-3">
+    <div *ngFor="let item of filteredItems"
+         class="bg-white rounded-xl border shadow-sm overflow-hidden"
+         [class.border-orange-200]="item.is_stale"
+         [class.border-gray-100]="!item.is_stale">
+
+      <div class="flex items-center justify-between px-5 py-4 gap-4">
+
+        <!-- Avatar + student info -->
+        <div class="flex items-center gap-3 min-w-0">
+          <div [style.background]="avatarColor(item.student_name)"
+               class="w-11 h-11 rounded-full flex items-center justify-center text-white font-bold text-sm flex-shrink-0">
+            {{ initials(item.student_name) }}
+          </div>
+          <div class="min-w-0">
+            <p class="font-bold text-gray-900 text-sm truncate">{{ item.student_name }}
+              <span class="font-normal text-xs text-gray-400">· Level {{ item.student_level }}</span>
+            </p>
+            <p class="text-xs text-gray-500 truncate">
+              <span *ngIf="item.has_medical_alert" class="text-red-500 font-semibold mr-1">⚠ Alert</span>
+              {{ item.patient_name }} (File #{{ item.patient_file_no }})
+            </p>
+            <p class="text-xs text-gray-400 mt-0.5">
+              {{ item.procedure_label }}
+              <span *ngIf="item.is_stale" class="ml-2 text-orange-500 font-semibold">· Stale</span>
+              · {{ timeAgo(item.submitted_at) }}
+              <span *ngIf="item.revision_count > 0"> · Rev. {{ item.revision_count }}</span>
+            </p>
+            <p *ngIf="(item.status === 'Approved' || item.status === 'Rejected') && item.reviewed_at"
+               class="text-xs text-gray-400 mt-0.5">
+              · {{ reviewDecisionLine(item) }}
+            </p>
+            <p *ngIf="item.status === 'Revision_Requested' && item.reviewed_at"
+               class="text-xs text-gray-400 mt-0.5">
+              · {{ revisionRequestedLine(item) }}
+            </p>
+          </div>
+        </div>
+
+        <!-- Right side: type + status + action -->
+        <div class="flex items-center gap-2 flex-shrink-0">
+          <span [class]="'px-2.5 py-0.5 rounded-full text-xs font-semibold border ' + typeClass(item.submission_type)">
+            {{ item.submission_type }}
+          </span>
+          <app-status-badge [status]="item.status"></app-status-badge>
+          <button *ngIf="item.status === 'Submitted' || item.status === 'Revision_Requested'"
+                  (click)="openReview(item)"
+                  class="ml-2 bg-royal text-white text-xs font-bold py-1.5 px-4 rounded-lg hover:bg-[#2c5282] transition-colors">
+            Review
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div *ngIf="filteredItems.length === 0" class="text-center py-12 text-sm text-gray-400">
+      No submissions match the selected filter.
+    </div>
+  </div>
+
+</div>
+
+
+<!-- ═══════════════════════════════════════════════════════════════════════════ -->
+<!-- GRADEBOOK TAB                                                               -->
+<!-- ═══════════════════════════════════════════════════════════════════════════ -->
+<div *ngIf="activeTab === 'gradebook'">
+
+  <!-- ── Students list view ─────────────────────────────────────────────────── -->
+  <ng-container *ngIf="!selectedGradeStudent">
+
+    <div *ngIf="gradeSummaryLoading" class="text-center py-10 text-gray-400 text-sm">Loading…</div>
+
+    <div *ngIf="!gradeSummaryLoading" class="space-y-3">
+
+      <div *ngIf="gradeSummary.length === 0" class="text-center py-12 text-sm text-gray-400">
+        No students with submissions yet.
+      </div>
+
+      <div *ngFor="let row of gradeSummary"
+           class="eval-student-card"
+           (click)="selectGradeStudent(row)">
+
+        <!-- Initials + name + level -->
+        <div [style.background]="avatarColor(row.student_name)"
+             class="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-sm flex-shrink-0">
+          {{ initials(row.student_name) }}
+        </div>
+
+        <div class="flex-1 min-w-0">
+          <p class="font-bold text-gray-900 text-[14px] truncate">{{ row.student_name }}</p>
+          <p class="text-xs text-gray-400 mt-0.5">Level {{ row.student_level }}</p>
+        </div>
+
+        <!-- Grade badge + case count -->
+        <div class="flex flex-col items-end gap-1 flex-shrink-0">
+          <div class="eval-grade-badge"
+               [style.background]="gradeColors(row.avg_grade).bg"
+               [style.color]="gradeColors(row.avg_grade).text"
+               [style.border-color]="gradeColors(row.avg_grade).border">
+            <div class="eval-badge-value">{{ row.avg_grade !== null ? row.avg_grade : '—' }}</div>
+            <div class="eval-badge-label">/ 10</div>
+          </div>
+          <p class="text-[12px] text-gray-400">{{ row.graded_count }} / {{ row.total_count }} graded</p>
+        </div>
+
+      </div>
+    </div>
+  </ng-container>
+
+  <!-- ── Student detail view ────────────────────────────────────────────────── -->
+  <ng-container *ngIf="selectedGradeStudent">
+
+    <!-- Header row -->
+    <div class="flex items-center gap-3 mb-5">
+      <button (click)="backToSummary()"
+              class="flex items-center gap-1 text-gray-500 hover:text-gray-800 text-sm font-medium transition-colors mr-1">
+        <span class="material-symbols-outlined text-lg">arrow_back</span>
+        Back
+      </button>
+
+      <div [style.background]="avatarColor(selectedGradeStudent.student_name)"
+           class="w-9 h-9 rounded-full flex items-center justify-center text-white font-bold text-sm flex-shrink-0">
+        {{ initials(selectedGradeStudent.student_name) }}
+      </div>
+
+      <div class="flex-1 min-w-0">
+        <p class="font-bold text-gray-900 text-sm truncate">{{ selectedGradeStudent.student_name }}</p>
+        <p class="text-xs text-gray-400">Level {{ selectedGradeStudent.student_level }}</p>
+      </div>
+
+      <div class="eval-grade-badge"
+           [style.background]="gradeColors(selectedGradeStudent.avg_grade).bg"
+           [style.color]="gradeColors(selectedGradeStudent.avg_grade).text"
+           [style.border-color]="gradeColors(selectedGradeStudent.avg_grade).border">
+        <div class="eval-badge-value">{{ selectedGradeStudent.avg_grade !== null ? selectedGradeStudent.avg_grade : '—' }}</div>
+        <div class="eval-badge-label">avg / 10</div>
+      </div>
+    </div>
+
+    <!-- Submissions list -->
+    <div *ngIf="studentGradesLoading" class="text-center py-10 text-gray-400 text-sm">Loading…</div>
+
+    <div *ngIf="!studentGradesLoading" class="space-y-3">
+
+      <div *ngIf="studentGrades.length === 0" class="text-center py-12 text-sm text-gray-400">
+        No submissions found.
+      </div>
+
+      <div *ngFor="let rec of gbPagedItems"
+           class="bg-white rounded-xl border border-gray-100 shadow-sm px-5 py-4">
+        <div class="flex items-start justify-between gap-4">
+
+          <!-- Left: procedure info -->
+          <div class="min-w-0 flex-1">
+            <div class="flex items-center gap-2 flex-wrap">
+              <p class="font-bold text-gray-900 text-sm">{{ rec.procedure_label }}</p>
+              <span [class]="'px-2 py-0.5 rounded-full text-xs font-semibold border ' + typeClass(rec.submission_type)">
+                {{ rec.submission_type }}
+              </span>
+            </div>
+            <p class="text-xs text-gray-500 mt-1">
+              {{ rec.patient_name }} · File #{{ rec.patient_file_no }} · {{ timeAgo(rec.submitted_at) }} · {{ formatDate(rec.submitted_at) }}
+            </p>
+            <p *ngIf="rec.feedback_note" class="text-xs text-gray-400 italic mt-1">
+              "{{ rec.feedback_note }}"
+            </p>
+          </div>
+
+          <!-- Right: grade badge or Grade button -->
+          <div class="flex-shrink-0 flex items-center">
+            <ng-container *ngIf="rec.grade !== null; else gradeBtn">
+              <div class="eval-grade-badge"
+                   [style.background]="gradeColors(rec.grade).bg"
+                   [style.color]="gradeColors(rec.grade).text"
+                   [style.border-color]="gradeColors(rec.grade).border">
+                <div class="eval-badge-value">{{ rec.grade }}</div>
+                <div class="eval-badge-label">/ 10</div>
+              </div>
+            </ng-container>
+            <ng-template #gradeBtn>
+              <button *ngIf="rec.status === 'Approved'"
+                      (click)="openGradeOnlyModal(rec)"
+                      class="bg-royal text-white text-xs font-bold py-1.5 px-4 rounded-lg hover:bg-[#2c5282] transition-colors">
+                Grade
+              </button>
+            </ng-template>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- Pagination -->
+      <div *ngIf="studentGrades.length > gbPageSize"
+           class="flex items-center justify-between pt-2 mt-1">
+        <button (click)="gbPrev()" [disabled]="gbPage === 1"
+                class="px-4 py-1.5 text-sm font-medium rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed">
+          Previous
+        </button>
+        <span class="text-xs text-gray-500">Page {{ gbPage }} of {{ gbTotalPages }}</span>
+        <button (click)="gbNext()" [disabled]="gbPage === gbTotalPages"
+                class="px-4 py-1.5 text-sm font-medium rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed">
+          Next
+        </button>
+      </div>
+    </div>
+
+  </ng-container>
+
+</div>
+
+
+<!-- ═══════════════════════════════════════════════════════════════════════════ -->
+<!-- REVIEW MODAL (Review step + Grading step + Grade-only mode)                -->
+<!-- ═══════════════════════════════════════════════════════════════════════════ -->
+<div *ngIf="selectedDetail || detailLoading || gradeOnlyMode"
+     class="fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-50">
+  <div class="bg-white rounded-xl shadow-xl w-full max-w-2xl max-h-[90vh] flex flex-col">
+
+    <!-- Modal header -->
+    <div class="flex items-center justify-between p-5 border-b">
+      <div>
+        <h3 class="text-xl font-bold text-royal">
+          <ng-container *ngIf="!gradingStep && !gradeOnlyMode">Review Procedure Note</ng-container>
+          <ng-container *ngIf="gradingStep && !gradeOnlyMode">Assign Grade</ng-container>
+          <ng-container *ngIf="gradeOnlyMode">Assign Grade</ng-container>
+        </h3>
+
+        <!-- Subtitle for review / grading step after approve -->
+        <p *ngIf="(selectedDetail) && !gradeOnlyMode" class="text-xs text-gray-500 mt-0.5">
+          {{ selectedDetail.student_name }} (Level {{ selectedDetail.student_level }})
+          · {{ selectedDetail.patient_name }} #{{ selectedDetail.patient_file_no }}
+          <span *ngIf="selectedDetail.has_medical_alert" class="ml-1 text-red-500 font-semibold">⚠ Medical Alert</span>
+        </p>
+
+        <!-- Subtitle for grade-only mode -->
+        <p *ngIf="gradeOnlyMode && gradeOnlyInfo" class="text-xs text-gray-500 mt-0.5">
+          {{ gradeOnlyInfo.studentName }} (Level {{ gradeOnlyInfo.studentLevel }})
+          · {{ gradeOnlyInfo.patientName }} #{{ gradeOnlyInfo.patientFileNo }}
+        </p>
+      </div>
+      <button (click)="closeModal()" class="text-gray-400 hover:text-gray-600">
+        <span class="material-symbols-outlined text-2xl">close</span>
+      </button>
+    </div>
+
+    <!-- Loading state -->
+    <div *ngIf="detailLoading" class="flex-1 flex items-center justify-center py-10 text-gray-400 text-sm">
+      Loading details…
+    </div>
+
+    <!-- ── Review step body ──────────────────────────────────────────────────── -->
+    <div *ngIf="selectedDetail && !gradingStep && !gradeOnlyMode"
+         class="p-6 space-y-4 overflow-y-auto flex-1">
+
+      <!-- Type + status + revision info -->
+      <div class="flex items-center gap-2 flex-wrap">
+        <span [class]="'px-2.5 py-0.5 rounded-full text-xs font-semibold border ' + typeClass(selectedDetail.submission_type)">
+          {{ selectedDetail.submission_type }}
+        </span>
+        <app-status-badge [status]="selectedDetail.status"></app-status-badge>
+        <span *ngIf="selectedDetail.revision_count > 0" class="text-xs text-gray-400">
+          Revision round {{ selectedDetail.revision_count }}
+        </span>
+        <span class="text-xs text-gray-400 ml-auto">Submitted {{ timeAgo(selectedDetail.submitted_at) }}</span>
+      </div>
+
+      <!-- Medical alert -->
+      <div *ngIf="selectedDetail.chronic_conditions" class="bg-red-50 border border-red-200 rounded-lg px-4 py-2 text-sm text-red-700">
+        <strong>Medical Alert:</strong> {{ selectedDetail.chronic_conditions }}
+      </div>
+
+      <!-- Content fields -->
+      <div class="bg-gray-50 rounded-lg border p-4 space-y-3">
+        <div>
+          <p class="text-[10px] font-bold text-gray-400 uppercase tracking-wide mb-1">Procedure</p>
+          <p class="text-sm text-gray-800 font-medium">{{ selectedDetail.procedure_label }}</p>
+        </div>
+
+        <ng-container *ngIf="selectedDetail.submission_type === 'Diagnosis'">
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div *ngIf="selectedDetail.clinical_findings">
+              <p class="text-[10px] font-bold text-gray-400 uppercase tracking-wide mb-1">Clinical Findings</p>
+              <p class="text-sm text-gray-700 leading-relaxed">{{ selectedDetail.clinical_findings }}</p>
+            </div>
+            <div *ngIf="selectedDetail.radiographic_findings">
+              <p class="text-[10px] font-bold text-gray-400 uppercase tracking-wide mb-1">Radiographic Findings</p>
+              <p class="text-sm text-gray-700 leading-relaxed">{{ selectedDetail.radiographic_findings }}</p>
+            </div>
+          </div>
+          <div *ngIf="selectedDetail.progress_note">
+            <p class="text-[10px] font-bold text-gray-400 uppercase tracking-wide mb-1">Progress Note</p>
+            <p class="text-sm text-gray-700 leading-relaxed">{{ selectedDetail.progress_note }}</p>
+          </div>
+        </ng-container>
+
+        <div *ngIf="selectedDetail.submission_type === 'Treatment' && selectedDetail.treatment_note">
+          <p class="text-[10px] font-bold text-gray-400 uppercase tracking-wide mb-1">Treatment Note</p>
+          <p class="text-sm text-gray-700 leading-relaxed">{{ selectedDetail.treatment_note }}</p>
+        </div>
+      </div>
+
+      <!-- History -->
+      <div *ngIf="selectedDetail.history.length">
+        <button (click)="showHistory = !showHistory"
+                class="text-sm text-royal font-medium hover:underline">
+          {{ showHistory ? 'Hide' : 'Show' }} review history ({{ selectedDetail.history.length }} round{{ selectedDetail.history.length > 1 ? 's' : '' }})
+        </button>
+        <div *ngIf="showHistory" class="mt-2 space-y-2">
+          <div *ngFor="let h of selectedDetail.history"
+               class="bg-white border border-gray-200 rounded-lg px-3 py-2 text-xs">
+            <div class="flex items-center justify-between">
+              <span [class]="'font-semibold ' + historyActionClass(h.action)">
+                Round {{ h.round_number }}: {{ historyActionLabel(h.action) }}
+              </span>
+              <span class="text-gray-400">{{ timeAgo(h.created_at) }}</span>
+            </div>
+            <p *ngIf="h.feedback" class="text-gray-600 mt-1">{{ h.feedback }}</p>
+            <p class="text-gray-400 mt-1">By {{ h.reviewer_name }}</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Feedback textarea -->
+      <div>
+        <label class="block text-sm font-bold text-gray-700 mb-1">
+          Feedback
+          <span class="font-normal text-gray-400 text-xs">(required for revision request or rejection)</span>
+        </label>
+        <textarea [(ngModel)]="feedback" rows="3"
+                  placeholder="Enter feedback or comments for the student..."
+                  class="w-full p-3 border border-gray-300 bg-white text-gray-900 rounded-lg focus:ring-2 focus:ring-royal outline-none text-sm">
+        </textarea>
+        <p *ngIf="reviewError" class="mt-1 text-sm text-red-600">{{ reviewError }}</p>
+      </div>
+
+      <!-- Reject confirmation -->
+      <div *ngIf="confirmReject" class="bg-red-50 border border-red-200 rounded-lg p-3 text-sm text-red-700">
+        This submission will be rejected and the student will be notified. Click Reject again to confirm.
+      </div>
+    </div>
+
+    <!-- ── Grading step body (after Approve, or grade-only from Gradebook) ──── -->
+    <div *ngIf="gradingStep || gradeOnlyMode"
+         class="p-6 space-y-5 overflow-y-auto flex-1">
+
+      <!-- Confirmation banner (only when transitioning from approve) -->
+      <div *ngIf="gradingStep && !gradeOnlyMode"
+           class="bg-green-50 border border-green-200 rounded-lg px-4 py-3 text-sm text-green-700 font-medium flex items-center gap-2">
+        <span class="material-symbols-outlined text-lg">check_circle</span>
+        Submission approved. Assign a grade below.
+      </div>
+
+      <!-- Procedure info in grade-only mode -->
+      <div *ngIf="gradeOnlyMode && gradeOnlyInfo"
+           class="bg-gray-50 rounded-lg border px-4 py-3">
+        <p class="text-[10px] font-bold text-gray-400 uppercase tracking-wide mb-1">Procedure</p>
+        <p class="text-sm text-gray-800 font-medium">{{ gradeOnlyInfo.procedureLabel }}</p>
+      </div>
+
+      <!-- Grade selector -->
+      <div>
+        <label class="block text-sm font-bold text-gray-700 mb-3">Grade (0 – 10)</label>
+        <div class="flex flex-wrap gap-2">
+          <div *ngFor="let n of gradeNumbers"
+               class="eval-grade-tile"
+               [ngStyle]="tileStyle(n)"
+               (click)="selectedGrade = n">
+            {{ n }}
+          </div>
+        </div>
+      </div>
+
+      <!-- Feedback note -->
+      <div>
+        <label class="block text-sm font-bold text-gray-700 mb-1">Feedback note <span class="font-normal text-gray-400">(optional)</span></label>
+        <textarea [(ngModel)]="gradeFeedback" rows="3"
+                  placeholder="Add a note for the student..."
+                  class="w-full p-3 border border-gray-300 bg-white text-gray-900 rounded-lg focus:ring-2 focus:ring-royal outline-none text-sm">
+        </textarea>
+      </div>
+
+      <p *ngIf="gradeError" class="text-sm text-red-600">{{ gradeError }}</p>
+    </div>
+
+    <!-- ── Modal footer: review step ──────────────────────────────────────────── -->
+    <div *ngIf="selectedDetail && !gradingStep && !gradeOnlyMode"
+         class="flex items-center justify-between gap-3 p-5 border-t bg-gray-50 rounded-b-xl">
+      <button (click)="closeModal()" class="text-gray-600 py-2 px-4 rounded-lg text-sm font-medium hover:bg-gray-100">
+        Cancel
+      </button>
+      <div class="flex gap-2">
+        <button (click)="submitReview('reject')" [disabled]="isReviewing"
+                class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-5 rounded-lg text-sm transition-colors disabled:opacity-60">
+          Reject
+        </button>
+        <button (click)="submitReview('request_revision')" [disabled]="isReviewing || !canRequestRevision(selectedDetail)"
+                [title]="!canRequestRevision(selectedDetail) ? 'Maximum revision rounds reached' : ''"
+                class="bg-orange-500 hover:bg-orange-600 text-white font-bold py-2 px-5 rounded-lg text-sm transition-colors disabled:opacity-60">
+          Request Revision
+        </button>
+        <button (click)="submitReview('approve')" [disabled]="isReviewing"
+                class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-5 rounded-lg text-sm transition-colors disabled:opacity-60">
+          Approve
+        </button>
+      </div>
+    </div>
+
+    <!-- ── Modal footer: grading step ─────────────────────────────────────────── -->
+    <div *ngIf="gradingStep || gradeOnlyMode"
+         class="flex items-center justify-between gap-3 p-5 border-t bg-gray-50 rounded-b-xl">
+      <button (click)="closeModal()" class="text-gray-600 py-2 px-4 rounded-lg text-sm font-medium hover:bg-gray-100">
+        Cancel
+      </button>
+      <button (click)="submitGrade()"
+              [disabled]="selectedGrade === null || isSubmittingGrade"
+              class="bg-royal text-white font-bold py-2 px-6 rounded-lg text-sm transition-colors hover:bg-[#2c5282] disabled:opacity-50">
+        {{ isSubmittingGrade ? 'Submitting…' : 'Submit Grade' }}
+      </button>
+    </div>
+
+  </div>
+</div>

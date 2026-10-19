@@ -1,0 +1,158 @@
+<div class="st-wrapper">
+
+  <!-- Loading state -->
+  <div *ngIf="loading" class="info-text">Loading screenings…</div>
+
+  <ng-container *ngIf="!loading">
+
+    <!-- Admin info pill -->
+    <div *ngIf="isAdmin" class="admin-pill">
+      <span class="material-symbols-outlined">shield</span>
+      Admin: view &amp; delete only
+    </div>
+
+    <!-- Clinician: Request screening button or pending chip -->
+    <div *ngIf="isClinician && appointmentId" class="mb-3">
+
+      <!-- No pending request: show "Request screening" button -->
+      <button
+        *ngIf="canRequestScreening && !requestLoading"
+        type="button"
+        class="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-royal text-gold text-sm font-semibold hover:bg-[#1a3a5c] transition-colors"
+        (click)="openRequestConfirm()"
+      >
+        <span class="material-symbols-outlined text-base">scan</span>
+        Request screening
+      </button>
+
+      <!-- Sending… spinner -->
+      <span *ngIf="requestLoading" class="inline-flex items-center gap-2 text-sm text-gray-500">
+        <span class="material-symbols-outlined animate-spin text-base">progress_activity</span>
+        Sending request…
+      </span>
+
+      <!-- Pending chip -->
+      <span *ngIf="hasPendingRequest"
+            class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-50 text-blue-700 text-xs font-medium">
+        <span class="material-symbols-outlined text-base">schedule</span>
+        Screening requested · waiting for radiologist
+      </span>
+
+    </div>
+
+    <!-- Header bar: filter + stats -->
+    <div class="header-bar">
+      <div class="header-left">
+        <label class="filter-label" for="filterType">Filter</label>
+        <select id="filterType" class="filter-select" [(ngModel)]="filterType">
+          <option value="all">All types ({{ summaryStats.total }})</option>
+          <option *ngFor="let t of typeOptions" [value]="t">
+            {{ t }} ({{ countForType(t) }})
+          </option>
+        </select>
+      </div>
+    </div>
+
+    <!-- Empty state -->
+    <div
+      *ngIf="!loading && screenings.length === 0"
+      class="empty-state"
+    >
+      <span class="material-symbols-outlined empty-icon">scan</span>
+      <h4 class="empty-title">No screenings yet</h4>
+      <p *ngIf="isAdmin" class="empty-sub">No imaging has been captured for this patient.</p>
+      <p *ngIf="isClinician" class="empty-sub">No screenings have been uploaded for this patient yet.</p>
+      <p *ngIf="isDA" class="empty-sub">No screenings on file. Contact the radiologist.</p>
+    </div>
+
+    <!-- Grouped gallery -->
+    <div *ngIf="filteredScreenings.length > 0" class="gallery-wrapper">
+      <div *ngFor="let group of groupedByDate" class="date-group">
+        <div class="group-header">
+          <span class="group-label">{{ group.label }}</span>
+          <span class="group-count">{{ group.items.length }} image{{ group.items.length === 1 ? '' : 's' }}</span>
+        </div>
+        <div class="thumb-grid">
+          <div
+            *ngFor="let s of group.items"
+            class="thumb-card"
+            (click)="openLightbox(s)"
+          >
+            <div class="thumb-img-wrapper">
+              <img
+                *ngIf="s.thumb_url"
+                [src]="s.thumb_url"
+                [alt]="s.image_type"
+                class="thumb-img"
+              />
+              <div *ngIf="!s.thumb_url" class="thumb-placeholder">
+                <span class="material-symbols-outlined">image</span>
+              </div>
+
+              <button
+                *ngIf="isWriteMode && s.can_delete"
+                type="button"
+                class="delete-icon-btn"
+                title="Delete"
+                (click)="$event.stopPropagation(); askDelete(s)"
+              >
+                <span class="material-symbols-outlined">delete</span>
+              </button>
+            </div>
+            <div class="thumb-meta">
+              <span class="type-badge" [ngClass]="typeBadgeClass(s.image_type)">{{ s.image_type }}</span>
+              <span *ngIf="s.tooth_numbers" class="tooth-tag">T {{ s.tooth_numbers }}</span>
+            </div>
+            <div class="thumb-uploader">
+              {{ s.uploaded_by_name }} · {{ s.uploaded_by_role }}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </ng-container>
+
+  <!-- Request screening confirm dialog -->
+  <div *ngIf="showRequestConfirm"
+       class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+    <div class="bg-white rounded-xl shadow-2xl p-6 max-w-sm w-full">
+      <h3 class="font-semibold text-gray-800 mb-2">Send patient for screening?</h3>
+      <p class="text-sm text-gray-500 mb-5">
+        Send the patient to the radiologist for screening? A request will be routed to the on-duty radiologist.
+      </p>
+      <div class="flex justify-end gap-3">
+        <button (click)="cancelRequestConfirm()"
+                class="px-4 py-2 text-sm rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50">
+          Cancel
+        </button>
+        <button (click)="sendScreeningRequest()"
+                class="px-4 py-2 text-sm rounded-lg bg-royal text-gold font-semibold hover:bg-[#1a3a5c] transition-colors">
+          Send request
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Delete dialog -->
+  <app-delete-screening-dialog
+    *ngIf="showDeleteDialog && pendingDelete"
+    [screening]="pendingDelete"
+    (confirm)="confirmDelete()"
+    (cancel)="cancelDelete()"
+  ></app-delete-screening-dialog>
+
+  <!-- Lightbox -->
+  <app-screening-lightbox
+    *ngIf="lightboxOpen"
+    [screening]="lightboxOpen"
+    (close)="closeLightbox()"
+    (navigate)="navigateLightbox($event)"
+  ></app-screening-lightbox>
+
+  <!-- Toast -->
+  <div *ngIf="toast" class="toast" [class.toast-error]="toast.kind === 'error'">
+    {{ toast.text }}
+  </div>
+
+</div>

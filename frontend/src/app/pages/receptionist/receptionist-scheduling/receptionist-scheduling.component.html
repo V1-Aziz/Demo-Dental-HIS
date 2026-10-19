@@ -1,0 +1,321 @@
+<div class="flex flex-col md:flex-row gap-6 items-start">
+
+  <!-- Left Panel: Appointment List -->
+  <div class="w-full md:w-2/3 bg-white rounded-lg shadow-md overflow-hidden">
+    <div class="flex flex-col md:flex-row items-center p-4 gap-3 border-b">
+      <div class="relative w-full md:flex-1">
+        <span class="absolute inset-y-0 left-0 flex items-center pl-3">
+          <span class="material-symbols-outlined text-xl text-gray-400">search</span>
+        </span>
+        <input type="text" placeholder="Search by patient name or file no..."
+               [(ngModel)]="searchTerm" (input)="onSearchChange()"
+               class="w-full pl-10 pr-4 py-2 bg-white text-gray-900 border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-gold/50 outline-none" />
+      </div>
+      <!-- Filter button -->
+      <div class="relative shrink-0">
+        <button type="button"
+                (click)="filterPopupOpen ? closeFilterPopup() : openFilterPopup()"
+                [class]="'relative flex items-center justify-center py-2 px-2.5 rounded-lg border transition-colors ' + (filterPopupOpen || hasActiveFilters ? 'bg-[#E6F1FB] border-[#378ADD] text-[#185FA5]' : 'bg-white border-gray-300 text-gray-700 hover:bg-[#E6F1FB] hover:border-[#378ADD] hover:text-[#185FA5]')">
+          <svg width="15" height="15" viewBox="0 0 16 16" fill="none">
+            <path d="M2 4h12M4 8h8M6 12h4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+          </svg>
+          <span *ngIf="hasActiveFilters"
+                class="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-[#378ADD]"
+                style="border:1.5px solid #e2e8f0"></span>
+        </button>
+      </div>
+      <button (click)="isBookModalOpen = true"
+              class="whitespace-nowrap bg-royal text-white font-bold py-2 px-5 rounded-lg flex items-center gap-2 hover:bg-[#2c5282] transition-all">
+        <span class="material-symbols-outlined text-base leading-none">add</span>
+        Book Appointment
+      </button>
+    </div>
+
+    <div class="overflow-x-auto">
+      <table class="w-full">
+        <thead class="bg-gray-50 border-b">
+          <tr>
+            <th class="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Patient</th>
+            <th class="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Procedure</th>
+            <th class="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Doctor</th>
+            <th class="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Date / Time</th>
+            <th class="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Status</th>
+          </tr>
+        </thead>
+        <tbody class="bg-white">
+          <tr *ngFor="let appt of pagedAppointments"
+              (click)="selectedAppointment = appt"
+              [class]="'cursor-pointer transition-colors text-sm border-b border-b-gray-100 border-l-4 ' + (selectedAppointment?.id === appt.id ? 'bg-blue-50 border-l-royal' : 'hover:bg-gray-50 border-l-gray-100')">
+            <td class="px-4 py-3">
+              <div class="font-medium text-gray-900">{{ appt.patientName }}</div>
+              <div class="text-xs text-gray-500">{{ appt.fileNo }}</div>
+            </td>
+            <td class="px-4 py-3 text-gray-600">{{ appt.procedure }}</td>
+            <td class="px-4 py-3 text-gray-600">{{ appt.assignedDr }}</td>
+            <td class="px-4 py-3 text-gray-600 font-mono text-xs">
+              <div>{{ appt.date }}</div>
+              <div>{{ appt.time }}</div>
+            </td>
+            <td class="px-4 py-3">
+              <span [class]="'px-2 py-1 text-xs font-semibold rounded-full ' + statusClass(appt.status)">
+                {{ appt.status }}
+              </span>
+            </td>
+          </tr>
+          <tr *ngIf="pagedAppointments.length === 0">
+            <td colspan="5" class="text-center p-8 text-gray-400">No appointments found.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Pagination bar -->
+    <div class="flex items-center justify-between px-4 py-1.5 border-t text-xs text-gray-600 flex-shrink-0">
+      <div class="flex items-center gap-2">
+        <span class="text-gray-500">Rows:</span>
+        <select [ngModel]="pageSize" (ngModelChange)="onPageSizeChange($event)"
+                class="border border-gray-300 rounded px-2 py-1 text-sm bg-white outline-none focus:ring-2 focus:ring-gold/50">
+          <option *ngFor="let s of pageSizeOptions" [value]="s">{{ s }}</option>
+        </select>
+      </div>
+      <div class="flex items-center gap-2">
+        <span class="text-gray-500">{{ pageRangeStart }}–{{ pageRangeEnd }} of {{ totalFiltered }}</span>
+        <button (click)="goToPage(currentPage - 1)" [disabled]="currentPage <= 1"
+                class="p-1 rounded hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed">
+          <span class="material-symbols-outlined text-base leading-none">chevron_left</span>
+        </button>
+        <span class="font-medium">{{ currentPage }} / {{ totalPages }}</span>
+        <button (click)="goToPage(currentPage + 1)" [disabled]="currentPage >= totalPages"
+                class="p-1 rounded hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed">
+          <span class="material-symbols-outlined text-base leading-none">chevron_right</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Right Panel: Appointment Detail -->
+  <div class="w-full md:w-1/3 bg-white p-6 rounded-lg shadow-md">
+    <h2 class="text-lg font-bold text-royal mb-4 border-b pb-2">Appointment Details</h2>
+
+    <div *ngIf="selectedAppointment; else emptyState" class="space-y-6">
+      <div>
+        <h3 class="text-xl font-bold text-royal">{{ selectedAppointment.patientName }}</h3>
+        <p class="text-xs text-gray-500 font-mono mb-4">File No: {{ selectedAppointment.fileNo }}</p>
+
+        <div class="grid grid-cols-2 gap-4 text-sm">
+          <div>
+            <label class="block text-xs font-bold text-gray-500 uppercase">Procedure</label>
+            <p class="text-gray-800 font-medium">{{ selectedAppointment.procedure }}</p>
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-gray-500 uppercase">Status</label>
+            <span [class]="'px-2 py-1 text-xs font-semibold rounded-full ' + statusClass(selectedAppointment.status)">
+              {{ selectedAppointment.status }}
+            </span>
+          </div>
+
+          <!-- Student row (only when academic_id is set) -->
+          <div *ngIf="selectedAppointment.academicId" class="col-span-2">
+            <label class="block text-xs font-bold text-gray-500 uppercase">Performed by (Student)</label>
+            <p class="text-gray-800 font-medium">
+              {{ selectedAppointment.studentName }}
+              <span *ngIf="selectedAppointment.studentLevel" class="ml-1 text-xs font-normal text-gray-500">
+                — Level {{ selectedAppointment.studentLevel }} · #{{ selectedAppointment.academicId }}
+              </span>
+            </p>
+          </div>
+
+          <div class="col-span-2">
+            <label class="block text-xs font-bold text-gray-500 uppercase">
+              {{ selectedAppointment.academicId ? 'Supervisor — Doctor' : 'Assigned Doctor' }}
+            </label>
+            <p class="text-gray-800 font-medium">{{ selectedAppointment.assignedDr }}</p>
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-gray-500 uppercase">Date</label>
+            <p class="text-gray-800 font-medium font-mono">{{ selectedAppointment.date }}</p>
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-gray-500 uppercase">Time</label>
+            <p class="text-gray-800 font-medium font-mono">{{ selectedAppointment.time }}</p>
+          </div>
+        </div>
+      </div>
+
+      <div *ngIf="selectedAppointment.status === 'Scheduled'" class="pt-4 border-t space-y-2">
+        <button (click)="openEditModal()"
+                class="w-full bg-royal text-white py-2 px-4 rounded-lg font-bold hover:bg-[#2c5282] transition-colors">
+          Edit Appointment
+        </button>
+        <button (click)="cancelAppointment()"
+                class="w-full bg-red-50 text-red-700 py-2 px-4 rounded-lg font-bold border border-red-200 hover:bg-red-100 transition-colors">
+          Cancel Appointment
+        </button>
+      </div>
+    </div>
+
+    <ng-template #emptyState>
+      <div class="py-8 text-center text-gray-400">
+        <p>Select an appointment to see details</p>
+      </div>
+    </ng-template>
+  </div>
+
+</div>
+
+<!-- ── Filter Modal ────────────────────────────────────────────────── -->
+<div *ngIf="filterPopupOpen" class="fixed inset-0 z-50 flex items-center justify-center" style="background:rgba(0,0,0,0.45)" (click)="closeFilterPopup()">
+  <div class="bg-white rounded-xl shadow-2xl flex flex-col" style="width:480px;max-height:90vh" (click)="$event.stopPropagation()">
+    <div class="flex items-center justify-between px-6 py-4 border-b">
+      <div class="flex items-center gap-2">
+        <svg width="18" height="18" viewBox="0 0 16 16" fill="none">
+          <path d="M2 4h12M4 8h8M6 12h4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+        </svg>
+        <h2 class="text-lg font-bold text-gray-800">Filters</h2>
+      </div>
+      <button (click)="closeFilterPopup()" class="text-gray-400 hover:text-gray-600">
+        <span class="material-symbols-outlined">close</span>
+      </button>
+    </div>
+    <div class="px-6 py-4 overflow-y-auto flex-1">
+
+      <!-- Status -->
+      <div class="mb-3.5">
+        <div class="text-[11px] font-medium text-gray-500 uppercase tracking-wider mb-1.5">Status</div>
+        <select [(ngModel)]="draft.status"
+                class="w-full rounded-md px-2 text-[12px] bg-gray-50 text-gray-800 outline-none"
+                style="height:30px;border:0.5px solid #d1d5db">
+          <option *ngFor="let opt of statusOptions" [value]="opt.value">{{ opt.label }}</option>
+        </select>
+      </div>
+
+      <hr style="border:none;border-top:0.5px solid #e5e7eb;margin:0 0 14px 0">
+
+      <!-- Date section -->
+      <div class="mb-1">
+        <div class="text-[11px] font-medium text-gray-500 uppercase tracking-wider mb-1.5">Date</div>
+        <div class="rounded-md p-2.5" style="background:#f3f4f6">
+
+          <div class="flex rounded-md overflow-hidden mb-2.5" style="border:0.5px solid #d1d5db">
+            <button type="button" (click)="draft.dateMode = 'specific'"
+                    [class]="'flex-1 text-[11px] border-none cursor-pointer transition-colors ' + (draft.dateMode === 'specific' ? 'bg-[#1D3557] text-white' : 'bg-white text-gray-500 hover:bg-gray-50')"
+                    style="height:27px">Specific date</button>
+            <button type="button" (click)="draft.dateMode = 'range'"
+                    [class]="'flex-1 text-[11px] border-none cursor-pointer transition-colors ' + (draft.dateMode === 'range' ? 'bg-[#1D3557] text-white' : 'bg-white text-gray-500 hover:bg-gray-50')"
+                    style="height:27px">Date range</button>
+          </div>
+
+          <div *ngIf="draft.dateMode === 'specific'">
+            <label class="block text-[10px] text-gray-500 mb-1">Select date</label>
+            <input type="date" [(ngModel)]="draft.date"
+                   class="w-full rounded-md px-1.5 text-[11px] bg-white text-gray-800 outline-none"
+                   style="height:28px;border:0.5px solid #d1d5db">
+          </div>
+
+          <div *ngIf="draft.dateMode === 'range'" class="flex gap-1.5">
+            <div class="flex-1">
+              <label class="block text-[10px] text-gray-500 mb-1">From</label>
+              <input type="date" [(ngModel)]="draft.dateFrom"
+                     class="w-full rounded-md px-1.5 text-[11px] bg-white text-gray-800 outline-none"
+                     style="height:28px;border:0.5px solid #d1d5db">
+            </div>
+            <div class="flex-1">
+              <label class="block text-[10px] text-gray-500 mb-1">To</label>
+              <input type="date" [(ngModel)]="draft.dateTo"
+                     class="w-full rounded-md px-1.5 text-[11px] bg-white text-gray-800 outline-none"
+                     style="height:28px;border:0.5px solid #d1d5db">
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+    </div>
+    <div class="flex justify-between gap-3 px-6 py-4 border-t">
+      <button (click)="clearAllFilters()" class="px-4 py-2 rounded-lg border border-gray-300 text-sm text-gray-700 hover:bg-gray-50">Clear all</button>
+      <button (click)="applyFilters()" class="px-4 py-2 rounded-lg text-sm font-medium bg-royal text-white hover:bg-[#2c5282]">Apply</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── 3-Step Book Appointment Modal ─────────────────────────────── -->
+<app-book-appointment-modal
+  *ngIf="isBookModalOpen"
+  (closed)="isBookModalOpen = false"
+  (booked)="onAppointmentBooked()">
+</app-book-appointment-modal>
+
+<!-- ── Edit Appointment Modal ─────────────────────────────────────── -->
+<div *ngIf="isEditModalOpen" class="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+  <div class="bg-white rounded-lg shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
+    <div class="flex items-center justify-between p-4 border-b sticky top-0 bg-white z-10">
+      <h3 class="text-xl font-bold text-royal">Edit Appointment</h3>
+      <button (click)="isEditModalOpen = false" class="text-gray-400 hover:text-gray-600">
+        <span class="material-symbols-outlined text-2xl">close</span>
+      </button>
+    </div>
+    <form class="p-6 space-y-4" (ngSubmit)="saveEdit()">
+
+      <p *ngIf="saveError" class="text-sm text-red-600 bg-red-50 border border-red-200 rounded-md px-3 py-2">
+        {{ saveError }}
+      </p>
+
+      <!-- Patient — locked in edit mode -->
+      <div>
+        <label class="block text-sm font-medium text-gray-700">Patient</label>
+        <p class="mt-1 w-full bg-gray-100 text-gray-500 border border-gray-300 rounded-md py-2 px-3 text-sm cursor-not-allowed">
+          {{ selectedAppointment?.patientName }} ({{ selectedAppointment?.fileNo }})
+        </p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+          <label class="block text-sm font-medium text-gray-700">Appointment Type <span class="text-red-500">*</span></label>
+          <select [(ngModel)]="form.appointmentTypeId" name="appointmentTypeId"
+                  class="mt-1 w-full bg-white text-gray-900 border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-royal focus:border-royal">
+            <option [value]="0" disabled>— Select type —</option>
+            <option *ngFor="let t of appointmentTypes" [value]="t.id">{{ t.name }} ({{ t.duration }} min)</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700">Doctor <span class="text-red-500">*</span></label>
+          <select [(ngModel)]="form.doctorId" name="doctorId"
+                  class="mt-1 w-full bg-white text-gray-900 border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-royal focus:border-royal">
+            <option [value]="0" disabled>— Select doctor —</option>
+            <option *ngFor="let d of doctors" [value]="d.id">{{ d.name }}</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+          <label class="block text-sm font-medium text-gray-700">Start Date & Time <span class="text-red-500">*</span></label>
+          <input type="datetime-local" [(ngModel)]="form.startDateTime" name="startDateTime"
+                 class="mt-1 w-full bg-white text-gray-900 border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-royal focus:border-royal" />
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700">End Time (auto)</label>
+          <p class="mt-1 w-full bg-gray-50 text-gray-600 border border-gray-200 rounded-md py-2 px-3 text-sm font-mono">
+            {{ calculatedEndTime || '—' }}
+          </p>
+        </div>
+      </div>
+
+      <div class="flex justify-end gap-3 pt-4 border-t">
+        <button type="button" (click)="isEditModalOpen = false"
+                class="bg-gray-100 text-gray-700 py-2 px-6 rounded-lg font-bold hover:bg-gray-200">Cancel</button>
+        <button type="submit" [disabled]="isSaving"
+                class="bg-royal text-white py-2 px-6 rounded-lg font-bold hover:bg-[#2c5282] disabled:opacity-50">
+          {{ isSaving ? 'Saving...' : 'Save Changes' }}
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ── Success Toast ───────────────────────────────────────────────── -->
+<div *ngIf="showToast"
+     class="fixed bottom-5 right-5 z-50 flex items-center gap-2 bg-green-600 text-white text-sm font-medium px-4 py-3 rounded-lg shadow-lg">
+  <span class="material-symbols-outlined text-base leading-none">check_circle</span>
+  {{ toastMessage }}
+</div>

@@ -1,0 +1,210 @@
+<div class="mt-6">
+
+  <!-- Toast -->
+  <div *ngIf="toast"
+       [class]="'fixed top-5 right-5 z-50 px-4 py-3 rounded-xl text-sm font-medium shadow-lg flex items-center gap-2 ' +
+                (toastType === 'success' ? 'bg-green-50 text-green-800 border border-green-200' : 'bg-red-50 text-red-800 border border-red-200')">
+    <span class="material-symbols-outlined text-base">{{ toastType === 'success' ? 'check_circle' : 'error' }}</span>
+    {{ toast }}
+  </div>
+
+  <!-- Toolbar -->
+  <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
+    <!-- Filter chips -->
+    <div class="flex gap-2">
+      <button *ngFor="let s of statusOptions"
+              (click)="setStatus(s)"
+              [class]="'px-3 py-1.5 rounded-full text-xs font-semibold border transition-all ' +
+                       (statusFilter === s
+                          ? 'bg-royal text-white border-royal'
+                          : 'bg-white text-gray-600 border-gray-300 hover:border-royal hover:text-royal')">
+        {{ s }}
+      </button>
+    </div>
+    <!-- Search -->
+    <div class="relative">
+      <span class="absolute inset-y-0 left-0 flex items-center pl-3">
+        <span class="material-symbols-outlined text-base text-gray-400">search</span>
+      </span>
+      <input type="text" [value]="searchQuery" (input)="onSearchChange($any($event.target).value)"
+             placeholder="Search name or civil ID…"
+             class="pl-9 pr-4 py-2 text-sm border border-gray-300 rounded-xl focus:ring-2 focus:ring-gold/40 focus:border-gold outline-none w-56" />
+    </div>
+  </div>
+
+  <!-- Table -->
+  <div class="bg-white rounded-xl border border-gray-200 overflow-hidden">
+    <div *ngIf="isLoading" class="flex items-center justify-center py-16 text-gray-400">
+      <span class="material-symbols-outlined text-3xl animate-spin">progress_activity</span>
+    </div>
+
+    <div *ngIf="!isLoading && rows.length === 0"
+         class="flex flex-col items-center justify-center py-16 text-gray-400 gap-2">
+      <span class="material-symbols-outlined text-4xl">inbox</span>
+      <span class="text-sm">No registrations match this filter.</span>
+    </div>
+
+    <table *ngIf="!isLoading && rows.length > 0" class="w-full text-sm">
+      <thead>
+        <tr class="bg-gray-50 border-b border-gray-200 text-xs text-gray-500 uppercase tracking-wider">
+          <th class="px-4 py-3 text-left font-semibold">Name / Email</th>
+          <th class="px-4 py-3 text-left font-semibold">Role</th>
+          <th class="px-4 py-3 text-left font-semibold">Civil ID</th>
+          <th class="px-4 py-3 text-left font-semibold">Contact</th>
+          <th class="px-4 py-3 text-left font-semibold">Submitted</th>
+          <th class="px-4 py-3 text-left font-semibold">Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let row of rows"
+            (click)="selectRow(row)"
+            [class]="'border-b border-gray-100 last:border-0 cursor-pointer transition-colors hover:bg-gray-50 ' +
+                     (selected?.registrationId === row.registrationId ? 'bg-gold/10 hover:bg-gold/10' : '')">
+          <td class="px-4 py-3">
+            <p class="font-medium text-gray-900">{{ row.firstName }} {{ row.middleName }} {{ row.lastName }}</p>
+            <p class="text-xs text-gray-400 mt-0.5">
+              {{ row.contacts[0]?.contactType === 'Email' ? row.contacts[0]?.value : '' }}
+            </p>
+          </td>
+          <td class="px-4 py-3">
+            <span [class]="'text-xs font-semibold px-2 py-0.5 rounded-full ' + rolePillClass(row.requestedRoleName)">
+              {{ row.requestedRoleName }}
+            </span>
+          </td>
+          <td class="px-4 py-3 font-mono text-gray-700">{{ row.civilId }}</td>
+          <td class="px-4 py-3 text-gray-600 text-xs">
+            {{ row.contacts.find(c => c.isPrimary)?.value ?? '—' }}
+          </td>
+          <td class="px-4 py-3 text-gray-500 text-xs whitespace-nowrap">
+            {{ timeAgo(row.submittedAt) }}
+          </td>
+          <td class="px-4 py-3">
+            <span [class]="'text-xs font-semibold px-2 py-0.5 rounded-full ' + statusPillClass(row.status)">
+              {{ row.status }}
+            </span>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Detail panel -->
+  <div *ngIf="selected" class="mt-4 bg-white rounded-xl border border-gray-200 p-6">
+    <div class="flex items-start justify-between mb-5">
+      <div>
+        <h3 class="text-base font-semibold text-royal">
+          {{ selected.firstName }} {{ selected.middleName }} {{ selected.lastName }}
+        </h3>
+        <p class="text-xs text-gray-400 mt-0.5">Registration #{{ selected.registrationId }} · {{ selected.requestedRoleName }}</p>
+      </div>
+      <button (click)="selected = null" class="text-gray-400 hover:text-gray-600">
+        <span class="material-symbols-outlined">close</span>
+      </button>
+    </div>
+
+    <!-- Info grid -->
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6 text-sm">
+      <div>
+        <p class="text-xs text-gray-400 uppercase tracking-wider mb-0.5">Civil ID</p>
+        <p class="font-mono font-medium text-gray-800">{{ selected.civilId }}</p>
+      </div>
+      <div>
+        <p class="text-xs text-gray-400 uppercase tracking-wider mb-0.5">Role Requested</p>
+        <span [class]="'text-xs font-semibold px-2 py-0.5 rounded-full ' + rolePillClass(selected.requestedRoleName)">
+          {{ selected.requestedRoleName }}
+        </span>
+      </div>
+      <div>
+        <p class="text-xs text-gray-400 uppercase tracking-wider mb-0.5">Submitted</p>
+        <p class="text-gray-800">{{ selected.submittedAt | date:'mediumDate' }}</p>
+      </div>
+      <div>
+        <p class="text-xs text-gray-400 uppercase tracking-wider mb-0.5">Status</p>
+        <span [class]="'text-xs font-semibold px-2 py-0.5 rounded-full ' + statusPillClass(selected.status)">
+          {{ selected.status }}
+        </span>
+      </div>
+    </div>
+
+    <!-- Contacts -->
+    <div class="mb-6">
+      <p class="text-xs text-gray-400 uppercase tracking-wider mb-2">Contacts</p>
+      <div class="flex flex-wrap gap-2">
+        <div *ngFor="let c of selected.contacts"
+             class="flex items-center gap-1.5 bg-gray-50 border border-gray-200 rounded-lg px-3 py-1.5 text-sm">
+          <span class="material-symbols-outlined text-sm text-gray-400">
+            {{ c.contactType === 'Email' ? 'mail' : 'phone' }}
+          </span>
+          <span class="text-gray-700">{{ c.value }}</span>
+          <span *ngIf="c.isPrimary" class="text-[10px] font-bold text-gold">PRIMARY</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Rejection reason display -->
+    <div *ngIf="selected.status === 'Rejected' && selected.rejectionReason"
+         class="mb-6 bg-red-50 border border-red-200 rounded-lg px-4 py-3 text-sm text-red-700">
+      <span class="font-semibold">Rejection reason:</span> {{ selected.rejectionReason }}
+    </div>
+
+    <!-- Approval options (only for Pending) -->
+    <div *ngIf="selected.status === 'Pending'" class="border-t border-gray-100 pt-5">
+      <p class="text-xs text-gray-400 uppercase tracking-wider mb-3">On approve · role-specific assignment</p>
+
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+        <!-- Supervising doctor (Student only — required) -->
+        <div *ngIf="needsSupervisor">
+          <label class="block text-xs font-semibold text-gray-600 mb-1">
+            Supervising Doctor Employee ID
+            <span class="text-red-500">*</span>
+          </label>
+          <input type="number" [(ngModel)]="approveSupervisorId"
+                 class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-gold/40 focus:border-gold outline-none"
+                 placeholder="e.g. 1" />
+        </div>
+        <!-- Academic level (Student only) -->
+        <div *ngIf="needsSupervisor">
+          <label class="block text-xs font-semibold text-gray-600 mb-1">Academic Level</label>
+          <input type="number" [(ngModel)]="approveAcademicLevel" min="1" max="10"
+                 class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-gold/40 focus:border-gold outline-none" />
+        </div>
+        <!-- Hire date (all roles) -->
+        <div>
+          <label class="block text-xs font-semibold text-gray-600 mb-1">Hire Date (optional)</label>
+          <input type="date" [(ngModel)]="approveHireDate"
+                 class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-gold/40 focus:border-gold outline-none" />
+        </div>
+      </div>
+
+      <!-- Action buttons -->
+      <div class="flex flex-wrap items-center gap-3">
+        <button (click)="approve()"
+                [disabled]="!canApprove || approveLoading"
+                class="flex items-center gap-2 bg-green-600 text-white text-sm font-semibold px-5 py-2.5 rounded-lg hover:bg-green-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed">
+          <span class="material-symbols-outlined text-lg">{{ approveLoading ? 'progress_activity' : 'check_circle' }}</span>
+          {{ approveLoading ? 'Activating...' : 'Approve & activate' }}
+        </button>
+        <button (click)="showRejectForm = !showRejectForm"
+                class="flex items-center gap-2 bg-white text-red-600 border border-red-300 text-sm font-semibold px-5 py-2.5 rounded-lg hover:bg-red-50 transition-all">
+          <span class="material-symbols-outlined text-lg">cancel</span>
+          Reject with reason
+        </button>
+      </div>
+
+      <!-- Reject form -->
+      <div *ngIf="showRejectForm" class="mt-4">
+        <textarea [(ngModel)]="rejectReason" rows="3"
+                  placeholder="Reason for rejection (min 5 characters)…"
+                  class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-gold/40 focus:border-gold outline-none resize-none mb-2">
+        </textarea>
+        <button (click)="reject()"
+                [disabled]="rejectReason.trim().length < 5 || rejectLoading"
+                class="flex items-center gap-2 bg-red-600 text-white text-sm font-semibold px-4 py-2 rounded-lg hover:bg-red-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed">
+          <span class="material-symbols-outlined text-lg">{{ rejectLoading ? 'progress_activity' : 'block' }}</span>
+          {{ rejectLoading ? 'Rejecting...' : 'Confirm rejection' }}
+        </button>
+      </div>
+    </div>
+  </div>
+
+</div>

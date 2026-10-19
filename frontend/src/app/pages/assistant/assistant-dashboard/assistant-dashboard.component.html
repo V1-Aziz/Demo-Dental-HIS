@@ -1,0 +1,27 @@
+<div class="space-y-8">
+  <div class="bg-white p-6 rounded-xl shadow-md">
+    <h2 class="text-xl font-bold text-royal mb-4">Today's Appointments</h2>
+    <div class="overflow-x-auto">
+      <table class="w-full text-left">
+        <thead class="border-b-2 border-[#e2e8f0] bg-gray-50">
+          <tr class="text-xs font-bold text-gray-500 uppercase tracking-wider">
+            <th class="p-4">Patient Name</th>
+            <th class="p-4">File No</th>
+            <th class="p-4">Procedure</th>
+            <th class="p-4">Time</th>
+            <th class="p-4">Date</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let appt of appointments" class="border-b border-[#e2e8f0] hover:bg-gray-50 transition-colors">
+            <td class="p-4 font-bold text-gray-800">{{ appt.patientName }}</td>
+            <td class="p-4 text-gray-600 font-mono">{{ appt.fileNo }}</td>
+            <td class="p-4 text-gray-600">{{ appt.procedure }}</td>
+            <td class="p-4 text-gray-600 font-mono">{{ appt.time }}</td>
+            <td class="p-4 text-gray-600">{{ appt.date }}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>

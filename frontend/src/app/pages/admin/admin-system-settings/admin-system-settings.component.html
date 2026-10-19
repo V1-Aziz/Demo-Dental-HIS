@@ -1,0 +1,41 @@
+<div class="px-6 py-5">
+
+  <!-- Tab nav — title comes from the admin-layout topbar, not here -->
+  <nav class="border-b border-gray-200 flex gap-1">
+
+    <!-- Pending approvals -->
+    <button (click)="navigate('pending-approvals')"
+            [class]="'inline-flex items-center gap-2 px-4 py-2.5 text-sm border-b-2 transition-colors ' +
+                     (activeTab === 'pending-approvals'
+                       ? 'border-gold text-royal font-semibold'
+                       : 'border-transparent text-gray-500 hover:text-royal')">
+      <span class="material-symbols-outlined text-lg">how_to_reg</span>
+      <span>Pending approvals</span>
+      <span *ngIf="pendingCount > 0"
+            class="ml-1 bg-amber-100 text-amber-800 text-xs font-medium px-2 py-0.5 rounded-full">
+        {{ pendingCount }}
+      </span>
+    </button>
+
+    <!-- System dropdowns -->
+    <button (click)="navigate('dropdowns')"
+            [class]="'inline-flex items-center gap-2 px-4 py-2.5 text-sm border-b-2 transition-colors ' +
+                     (activeTab === 'dropdowns'
+                       ? 'border-gold text-royal font-semibold'
+                       : 'border-transparent text-gray-500 hover:text-royal')">
+      <span class="material-symbols-outlined text-lg">list</span>
+      <span>System dropdowns</span>
+    </button>
+
+    <!-- More utilities (disabled placeholder) -->
+    <span class="inline-flex items-center gap-2 px-4 py-2.5 text-sm
+                 border-b-2 border-transparent text-gray-300 cursor-not-allowed"
+          title="Coming soon">
+      <span class="material-symbols-outlined text-lg">add</span>
+      <span>More utilities</span>
+    </span>
+
+  </nav>
+
+  <router-outlet></router-outlet>
+</div>

@@ -1,0 +1,272 @@
+<div class="mt-6">
+
+  <!-- Toast -->
+  <div *ngIf="toast"
+       [class]="'fixed top-5 right-5 z-50 px-4 py-3 rounded-xl text-sm font-medium shadow-lg flex items-center gap-2 ' +
+                (toastType === 'success' ? 'bg-green-50 text-green-800 border border-green-200' : 'bg-red-50 text-red-800 border border-red-200')">
+    <span class="material-symbols-outlined text-base">{{ toastType === 'success' ? 'check_circle' : 'error' }}</span>
+    {{ toast }}
+  </div>
+
+  <!-- Unsaved-changes switch warning -->
+  <div *ngIf="switchWarning"
+       class="mb-4 bg-amber-50 border border-amber-300 rounded-xl px-4 py-3 flex items-center justify-between gap-4">
+    <div class="flex items-center gap-2 text-sm text-amber-800">
+      <span class="material-symbols-outlined text-base">warning</span>
+      You have unsaved changes in <strong>{{ selectedCategory?.displayName }}</strong>.
+      Switching categories will discard them.
+    </div>
+    <div class="flex gap-2 flex-shrink-0">
+      <button (click)="cancelSwitchAway()"
+              class="text-xs px-3 py-1.5 border border-amber-400 text-amber-800 rounded-lg hover:bg-amber-100 transition-colors">
+        Stay & save
+      </button>
+      <button (click)="confirmSwitchAway()"
+              class="text-xs px-3 py-1.5 bg-amber-600 text-white rounded-lg hover:bg-amber-700 transition-colors">
+        Discard & switch
+      </button>
+    </div>
+  </div>
+
+  <div class="flex gap-5 h-[calc(100vh-300px)] min-h-[420px]">
+
+    <!-- Left pane: categories -->
+    <div class="w-64 flex-shrink-0 bg-white rounded-xl border border-gray-200 flex flex-col overflow-hidden">
+      <div class="p-3 border-b border-gray-100">
+        <div class="relative">
+          <span class="absolute inset-y-0 left-0 flex items-center pl-3">
+            <span class="material-symbols-outlined text-sm text-gray-400">search</span>
+          </span>
+          <input type="text" [value]="categorySearch" (input)="onCategorySearch($any($event.target).value)"
+                 placeholder="Filter categories…"
+                 class="w-full pl-8 pr-3 py-1.5 text-xs border border-gray-200 rounded-lg focus:ring-1 focus:ring-gold/40 focus:border-gold outline-none" />
+        </div>
+      </div>
+      <div class="flex-1 overflow-y-auto">
+        <button *ngFor="let cat of filteredCategories"
+                (click)="selectCategory(cat)"
+                [class]="'w-full text-left px-4 py-3 border-l-4 transition-all hover:bg-gray-50 ' +
+                         (selectedCategory?.categoryKey === cat.categoryKey
+                            ? 'border-gold bg-amber-50'
+                            : 'border-transparent')">
+          <div class="flex items-center justify-between">
+            <span [class]="'text-sm font-medium ' + (selectedCategory?.categoryKey === cat.categoryKey ? 'text-royal' : 'text-gray-700')">
+              {{ cat.displayName }}
+            </span>
+            <span class="text-xs text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded-full">{{ cat.count }}</span>
+          </div>
+          <p *ngIf="cat.readOnly" class="text-[10px] text-amber-600 mt-0.5 flex items-center gap-0.5">
+            <span class="material-symbols-outlined text-[12px]">lock</span> Read-only
+          </p>
+        </button>
+      </div>
+    </div>
+
+    <!-- Right pane: editor -->
+    <div class="flex-1 bg-white rounded-xl border border-gray-200 flex flex-col overflow-hidden">
+      <div *ngIf="!selectedCategory"
+           class="flex-1 flex items-center justify-center text-gray-400">
+        <div class="text-center">
+          <span class="material-symbols-outlined text-4xl block mb-2">category</span>
+          <p class="text-sm">Select a category to manage its values</p>
+        </div>
+      </div>
+
+      <ng-container *ngIf="selectedCategory">
+        <!-- Header -->
+        <div class="flex items-start justify-between px-5 py-4 border-b border-gray-100">
+          <div>
+            <h3 class="text-base font-semibold text-royal">{{ selectedCategory.displayName }}</h3>
+            <p class="text-xs text-gray-400 mt-0.5">{{ selectedCategory.description }}</p>
+          </div>
+          <div class="flex items-center gap-2">
+            <!-- Pending badge -->
+            <span *ngIf="hasPending()"
+                  class="flex items-center gap-1 text-xs font-semibold text-amber-700 bg-amber-100 border border-amber-300 px-2.5 py-1 rounded-full">
+              <span class="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></span>
+              {{ pendingChanges.size }} unsaved
+            </span>
+            <button *ngIf="!selectedCategory.readOnly"
+                    (click)="showAddForm = !showAddForm; newLabel = ''"
+                    class="flex items-center gap-1.5 bg-gold text-royal text-sm font-semibold px-3 py-2 rounded-lg hover:bg-gold/90 transition-all">
+              <span class="material-symbols-outlined text-lg">add</span>
+              Add value
+            </button>
+            <div *ngIf="selectedCategory.readOnly"
+                 class="flex items-center gap-1 text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2"
+                 title="Managed via seed migration">
+              <span class="material-symbols-outlined text-sm">lock</span>
+              Read-only
+            </div>
+          </div>
+        </div>
+
+        <!-- Add form -->
+        <div *ngIf="showAddForm" class="px-5 py-3 bg-gray-50 border-b border-gray-100 flex items-center gap-3">
+          <input type="text" [(ngModel)]="newLabel" placeholder="New value label…"
+                 (keyup.enter)="addValue()" (keyup.escape)="showAddForm = false"
+                 class="flex-1 px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-gold/40 focus:border-gold outline-none"
+                 autofocus />
+          <button (click)="addValue()" [disabled]="!newLabel.trim() || addLoading"
+                  class="bg-royal text-white text-sm px-4 py-2 rounded-lg hover:bg-[#2c5282] transition-all disabled:opacity-50">
+            {{ addLoading ? 'Adding…' : 'Add' }}
+          </button>
+          <button (click)="showAddForm = false" class="text-gray-400 hover:text-gray-600">
+            <span class="material-symbols-outlined">close</span>
+          </button>
+        </div>
+
+        <!-- Values table -->
+        <div class="flex-1 overflow-auto">
+          <div *ngIf="valuesLoading" class="flex items-center justify-center py-12 text-gray-400">
+            <span class="material-symbols-outlined text-2xl animate-spin">progress_activity</span>
+          </div>
+
+          <div *ngIf="!valuesLoading && values.length === 0"
+               class="flex items-center justify-center py-12 text-gray-400 text-sm">
+            No values yet. Click "Add value" to get started.
+          </div>
+
+          <table *ngIf="!valuesLoading && values.length > 0" class="w-full text-sm">
+            <thead>
+              <tr class="bg-gray-50 border-b border-gray-100 text-xs text-gray-500 uppercase tracking-wider">
+                <th class="px-2 py-2 w-8"></th>
+                <th class="px-4 py-2 text-left font-semibold">Label</th>
+                <th *ngIf="extraFields.includes('duration')" class="px-4 py-2 text-left font-semibold">Duration (min)</th>
+                <th *ngIf="extraFields.includes('description')" class="px-4 py-2 text-left font-semibold">Description</th>
+                <th class="px-4 py-2 text-center font-semibold w-24">Active</th>
+                <th class="px-4 py-2 text-center font-semibold w-28">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let v of values; let i = index"
+                  draggable="true"
+                  (dragstart)="onDragStart(i)"
+                  (dragover)="onDragOver($event)"
+                  (drop)="onDrop($event, i)"
+                  [class]="'border-b border-gray-50 last:border-0 transition-all ' +
+                           (!v.isActive ? 'opacity-55' : '') +
+                           (isPending(v) ? ' bg-amber-50/60' : '')">
+
+                <!-- Drag handle + pending dot -->
+                <td class="px-2 py-2.5">
+                  <div class="flex flex-col items-center gap-0.5">
+                    <span class="text-gray-300 cursor-grab hover:text-gray-500 material-symbols-outlined text-lg leading-none">
+                      drag_indicator
+                    </span>
+                    <span *ngIf="isPending(v)"
+                          class="w-1.5 h-1.5 rounded-full bg-amber-500"
+                          title="Unsaved change"></span>
+                  </div>
+                </td>
+
+                <!-- Label / edit -->
+                <td class="px-4 py-2.5">
+                  <ng-container *ngIf="!isEditing(v)">
+                    <span [class]="'text-gray-800' + (isPending(v) ? ' font-medium' : '')">
+                      {{ v.valueLabel }}
+                    </span>
+                    <span *ngIf="!v.isActive" class="ml-2 text-xs text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded">
+                      Inactive
+                    </span>
+                    <button *ngIf="!selectedCategory.readOnly"
+                            (click)="startEdit(v)"
+                            class="ml-2 text-gray-300 hover:text-royal transition-colors">
+                      <span class="material-symbols-outlined text-sm leading-none">edit</span>
+                    </button>
+                  </ng-container>
+                  <ng-container *ngIf="isEditing(v)">
+                    <input type="text" [(ngModel)]="editState!.currentLabel"
+                           (keyup.enter)="saveEdit(v)" (keyup.escape)="cancelEdit()"
+                           class="px-2 py-1 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-gold/40 focus:border-gold outline-none w-full max-w-xs"
+                           autofocus />
+                  </ng-container>
+                </td>
+
+                <!-- Duration (appointment_type) -->
+                <td *ngIf="extraFields.includes('duration')" class="px-4 py-2.5">
+                  <input *ngIf="!selectedCategory.readOnly" type="number" [value]="$any(v).duration ?? ''"
+                         (change)="updateDuration(v, +$any($event.target).value)"
+                         class="w-20 px-2 py-1 text-sm border border-gray-300 rounded-lg focus:ring-1 focus:ring-gold/40 outline-none" />
+                  <span *ngIf="selectedCategory.readOnly">{{ $any(v).duration ?? '—' }}</span>
+                </td>
+
+                <!-- Description (ticket_type) -->
+                <td *ngIf="extraFields.includes('description')" class="px-4 py-2.5 text-xs text-gray-500 max-w-xs truncate">
+                  {{ $any(v).description ?? '—' }}
+                </td>
+
+                <!-- Active toggle -->
+                <td class="px-4 py-2.5 text-center">
+                  <button (click)="toggleActive(v)"
+                          [disabled]="selectedCategory.readOnly"
+                          [class]="'w-9 h-5 rounded-full transition-all focus:outline-none relative ' +
+                                   (v.isActive ? 'bg-green-500' : 'bg-gray-300') +
+                                   (selectedCategory.readOnly ? ' cursor-not-allowed' : ' cursor-pointer')"
+                          [title]="selectedCategory.readOnly ? 'Managed via seed migration' : (v.isActive ? 'Click to deactivate' : 'Click to activate')">
+                    <span [class]="'block w-4 h-4 bg-white rounded-full shadow transform transition-transform absolute top-0.5 ' +
+                                   (v.isActive ? 'left-4' : 'left-0.5')"></span>
+                  </button>
+                </td>
+
+                <!-- Actions -->
+                <td class="px-4 py-2.5 text-center">
+                  <div class="flex items-center justify-center gap-1">
+                    <ng-container *ngIf="isEditing(v)">
+                      <button (click)="saveEdit(v)" class="text-green-500 hover:text-green-700">
+                        <span class="material-symbols-outlined text-lg">check</span>
+                      </button>
+                      <button (click)="cancelEdit()" class="text-gray-400 hover:text-gray-600">
+                        <span class="material-symbols-outlined text-lg">close</span>
+                      </button>
+                    </ng-container>
+
+                    <ng-container *ngIf="!isEditing(v) && !selectedCategory.readOnly">
+                      <ng-container *ngIf="deleteConfirmId !== v.lookupId">
+                        <button (click)="confirmDelete(v.lookupId)"
+                                class="text-gray-300 hover:text-red-500 transition-colors" title="Delete">
+                          <span class="material-symbols-outlined text-lg">delete</span>
+                        </button>
+                      </ng-container>
+                      <ng-container *ngIf="deleteConfirmId === v.lookupId">
+                        <button (click)="deleteValue(v)" [disabled]="deleteLoading"
+                                class="text-red-600 hover:text-red-800 text-xs font-bold disabled:opacity-50">
+                          {{ deleteLoading ? '…' : 'Confirm' }}
+                        </button>
+                        <button (click)="cancelDelete()" class="text-gray-400 hover:text-gray-600 ml-1">
+                          <span class="material-symbols-outlined text-sm">close</span>
+                        </button>
+                      </ng-container>
+                    </ng-container>
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Footer -->
+        <div class="border-t border-gray-100 px-5 py-3 flex items-center justify-between text-xs">
+          <span class="text-gray-400">Drag rows to reorder · Use the Save button to apply toggle &amp; label changes</span>
+          <div class="flex items-center gap-2">
+            <button *ngIf="hasPending()"
+                    (click)="discardChanges()"
+                    class="px-3 py-1.5 border border-gray-300 text-gray-600 rounded-lg hover:bg-gray-50 transition-colors text-xs">
+              Discard
+            </button>
+            <button (click)="saveAllChanges()"
+                    [disabled]="!hasPending() || saveLoading"
+                    [class]="'flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-xs font-semibold transition-all ' +
+                             (hasPending()
+                               ? 'bg-royal text-white hover:bg-[#2c5282]'
+                               : 'bg-gray-100 text-gray-400 cursor-not-allowed')">
+              <span *ngIf="saveLoading" class="material-symbols-outlined text-sm animate-spin">progress_activity</span>
+              <span *ngIf="!saveLoading" class="material-symbols-outlined text-sm">save</span>
+              {{ saveLoading ? 'Saving…' : (hasPending() ? 'Save ' + pendingChanges.size + ' change' + (pendingChanges.size > 1 ? 's' : '') : 'Saved') }}
+            </button>
+          </div>
+        </div>
+      </ng-container>
+    </div>
+  </div>
+</div>

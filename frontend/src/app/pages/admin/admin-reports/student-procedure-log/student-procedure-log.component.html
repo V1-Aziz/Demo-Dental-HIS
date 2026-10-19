@@ -1,0 +1,122 @@
+<div class="space-y-6">
+
+  <!-- Header row -->
+  <div class="flex items-center justify-between">
+    <button (click)="goBack()"
+            class="flex items-center gap-1 text-sm text-royal hover:text-gold transition-colors">
+      <span class="material-symbols-outlined text-base leading-none">arrow_back</span>
+      Back to Reports Menu
+    </button>
+    <button (click)="exportOpen = true"
+            class="flex items-center gap-1.5 bg-royal text-white border border-royal rounded-lg px-3 py-1.5 text-sm font-semibold hover:bg-royal/90 transition-colors">
+      <span class="material-symbols-outlined text-base leading-none">download</span>
+      Export
+    </button>
+  </div>
+
+  <app-export-modal
+    [open]="exportOpen"
+    [reportKey]="reportKey"
+    [contextSubtitle]="exportSubtitle"
+    [filters]="exportFilters"
+    (closed)="exportOpen = false">
+  </app-export-modal>
+
+  <!-- Title -->
+  <div>
+    <h2 class="text-2xl font-bold text-gray-800">Student Procedure Log</h2>
+    <p class="text-sm text-gray-500 mt-0.5">Tracks procedures performed per student</p>
+  </div>
+
+  <!-- Filter row -->
+  <div class="flex items-center gap-3">
+    <label class="text-sm font-medium text-gray-600">Supervisor:</label>
+    <select [(ngModel)]="selectedSupervisorId" (ngModelChange)="onFilterChange()"
+            class="border border-gray-300 rounded-lg py-1.5 px-3 text-sm text-gray-700 bg-white focus:outline-none focus:ring-2 focus:ring-gold/50">
+      <option *ngFor="let opt of supervisorOptions" [ngValue]="opt.employeeId">{{ opt.doctorName }}</option>
+    </select>
+  </div>
+
+  <!-- Loading / error -->
+  <div *ngIf="isLoading" class="flex items-center justify-center h-32 text-sm text-gray-400">
+    <span class="material-symbols-outlined animate-spin text-lg mr-2">progress_activity</span>
+    Loading…
+  </div>
+  <div *ngIf="hasError && !isLoading" class="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-4 py-3">
+    Failed to load data. Please try again.
+  </div>
+
+  <ng-container *ngIf="!isLoading && !hasError">
+
+    <!-- Metric cards -->
+    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div class="bg-slate-50 border border-gray-200 rounded-lg p-5">
+        <p class="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1">Active Students</p>
+        <p class="text-3xl font-bold text-gray-800">{{ summary.activeStudents | number }}</p>
+      </div>
+
+      <div class="bg-slate-50 border border-gray-200 rounded-lg p-5">
+        <p class="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1">Total Procedures Logged</p>
+        <p class="text-3xl font-bold text-gray-800">{{ summary.totalProcedures | number }}</p>
+      </div>
+
+      <div class="bg-slate-50 border border-gray-200 rounded-lg p-5">
+        <p class="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1">Avg Per Student</p>
+        <p class="text-3xl font-bold text-gray-800">{{ summary.avgPerStudent | number:'1.0-1' }}</p>
+      </div>
+    </div>
+
+    <!-- Students table -->
+    <div class="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead class="bg-gray-50 border-b border-gray-200">
+            <tr>
+              <th class="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Student</th>
+              <th class="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Level</th>
+              <th class="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Supervisor</th>
+              <th class="text-right px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Procedures</th>
+              <th class="text-right px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Types</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-gray-100">
+            <tr *ngIf="students.length === 0">
+              <td colspan="5" class="px-4 py-8 text-center text-sm text-gray-400">
+                No students found for this filter.
+              </td>
+            </tr>
+            <tr *ngFor="let s of students" class="hover:bg-slate-50">
+              <td class="px-4 py-3 text-gray-800 font-medium">{{ s.studentName }}</td>
+              <td class="px-4 py-3">
+                <span class="inline-block bg-blue-50 text-blue-700 px-2 py-0.5 rounded text-xs font-semibold">
+                  Level {{ s.academicLevel }}
+                </span>
+              </td>
+              <td class="px-4 py-3 text-gray-600">{{ s.supervisorName }}</td>
+              <td class="px-4 py-3 text-right text-gray-800 tabular-nums">{{ s.totalProcedures | number }}</td>
+              <td class="px-4 py-3 text-right text-gray-600 tabular-nums">{{ s.uniqueProcedureTypes | number }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Procedure types chart -->
+    <div class="bg-white border border-gray-200 rounded-lg p-5 shadow-sm">
+      <h3 class="text-sm font-semibold text-gray-600 mb-4 uppercase tracking-wide">Procedure Type Distribution</h3>
+      <p *ngIf="procedureTypes.length === 0" class="flex items-center justify-center h-48 text-sm text-gray-400">
+        No procedures recorded.
+      </p>
+      <div [style.display]="procedureTypes.length === 0 ? 'none' : 'block'" style="height:280px; position:relative">
+        <canvas #barChart></canvas>
+      </div>
+    </div>
+
+    <!-- Note -->
+    <div class="text-xs text-gray-400 border-t pt-3">
+      Tracks treatment records authored by students. Supervisors use this to ensure students get diverse clinical exposure.
+    </div>
+
+  </ng-container>
+
+</div>

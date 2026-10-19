@@ -1,0 +1,76 @@
+<!-- Inline report views -->
+<app-new-patient-registrations
+  *ngIf="selectedReport === 'new-patient-registrations'"
+  (back)="onBack()">
+</app-new-patient-registrations>
+
+<app-patient-demographics
+  *ngIf="selectedReport === 'patient-demographics'"
+  (back)="onBack()">
+</app-patient-demographics>
+
+<app-attendance-no-show
+  *ngIf="selectedReport === 'attendance-no-show'"
+  (back)="onBack()">
+</app-attendance-no-show>
+
+<app-clinic-occupancy
+  *ngIf="selectedReport === 'clinic-occupancy'"
+  (back)="onBack()">
+</app-clinic-occupancy>
+
+<app-low-stock-items
+  *ngIf="selectedReport === 'low-stock-items'"
+  (back)="onBack()">
+</app-low-stock-items>
+
+<app-consumption-report
+  *ngIf="selectedReport === 'consumption-report'"
+  (back)="onBack()">
+</app-consumption-report>
+
+<app-student-procedure-log
+  *ngIf="selectedReport === 'student-procedure-log'"
+  (back)="onBack()">
+</app-student-procedure-log>
+
+<app-supervisor-evaluation
+  *ngIf="selectedReport === 'supervisor-evaluation'"
+  (back)="onBack()">
+</app-supervisor-evaluation>
+
+<!-- Report menu -->
+<div *ngIf="!selectedReport" class="bg-white rounded-lg shadow-md p-6">
+
+  <div class="mb-6 border-b pb-4">
+    <h2 class="text-xl font-bold text-royal">Operational Reports</h2>
+    <p class="text-sm text-gray-500 mt-0.5">Select a report to view detailed analytics.</p>
+  </div>
+
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+    <div *ngFor="let group of groups">
+      <h3 class="text-lg font-semibold mb-3 text-gray-700 border-b pb-2 flex items-center">
+        <span [class]="'material-symbols-outlined text-xl mr-2 ' + group.iconColor">{{ group.icon }}</span>
+        {{ group.heading }}
+      </h3>
+      <div class="space-y-4 mt-4">
+        <button
+          *ngFor="let card of group.cards"
+          (click)="openReport(card)"
+          [class]="'bg-gray-50 p-4 rounded-lg border text-left transition-all duration-200 group w-full ' +
+                   (card.route ? 'border-gray-200 hover:border-gold hover:shadow-md cursor-pointer' : 'border-gray-100 opacity-50 cursor-not-allowed')"
+        >
+          <h4 class="font-semibold text-gray-800 group-hover:text-royal mb-1 flex items-center justify-between">
+            <span class="flex items-center">
+              <div [class]="'w-2 h-2 rounded-full mr-2 ' + card.dotColor"></div>
+              {{ card.title }}
+            </span>
+            <span *ngIf="!card.route" class="text-xs text-gray-400 font-normal">Coming soon</span>
+          </h4>
+          <p class="text-xs text-gray-500">{{ card.desc }}</p>
+        </button>
+      </div>
+    </div>
+  </div>
+
+</div>

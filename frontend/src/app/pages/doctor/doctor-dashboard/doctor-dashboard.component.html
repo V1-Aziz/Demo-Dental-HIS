@@ -1,0 +1,290 @@
+<div class="space-y-8">
+
+  <!-- Quick Actions -->
+  <section>
+    <h3 class="text-xl font-semibold text-gray-700 mb-4">Quick Actions</h3>
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-[14px]">
+
+      <!-- Card 1: Smart Daily Briefing -->
+      <div class="bg-white rounded-lg shadow-md border border-gray-100 border-b-4 border-b-yellow-400 p-5 flex flex-col">
+
+        <div class="flex items-start gap-3 mb-1">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" class="flex-shrink-0 mt-0.5 text-royal" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/>
+          </svg>
+          <div>
+            <p style="font-size:14px;font-weight:700" class="text-gray-800 leading-tight">Smart Daily Briefing</p>
+            <p style="font-size:11.5px" class="text-gray-400 mt-0.5">Click any stat to see today's details instantly.</p>
+          </div>
+        </div>
+
+        <hr class="border-gray-100 my-3">
+
+        <!-- Chips row -->
+        <div class="briefing-chip-area relative flex gap-2">
+
+          <!-- Patients chip -->
+          <div class="relative flex-1">
+            <button (click)="toggleBriefing('patients'); $event.stopPropagation()"
+                    style="font-size:12px;font-weight:600;background:#eff6ff;border:1px solid #bfdbfe;color:#1d4ed8;border-radius:7px;padding:5px 0;width:100%;cursor:pointer;transition:opacity .12s"
+                    [style.opacity]="briefingPopover === 'patients' ? '0.75' : '1'">
+              {{ todayPatients.length || '—' }} Patients
+            </button>
+            <div *ngIf="briefingPopover === 'patients'"
+                 style="position:absolute;top:calc(100% + 8px);left:0;width:280px;background:#fff;border:1px solid #e2e8f0;border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.12);z-index:500;padding:14px">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+                <span style="font-size:12px;font-weight:700;color:#1e293b">Today's Patients</span>
+                <button (click)="briefingPopover = null; $event.stopPropagation()" style="background:none;border:none;cursor:pointer;color:#94a3b8;font-size:18px;line-height:1;padding:0 2px">×</button>
+              </div>
+              <div *ngFor="let p of todayPatients" style="padding:7px 0;border-bottom:1px solid #f1f5f9">
+                <p (click)="goToPatientFile(p.patientId); briefingPopover = null; $event.stopPropagation()"
+                   style="font-size:12px;font-weight:600;color:#1e293b;margin:0;cursor:pointer"
+                   onmouseover="this.style.color='#1d4ed8'" onmouseout="this.style.color='#1e293b'">
+                  {{ p.name }}
+                </p>
+                <p style="font-size:11px;color:#94a3b8;margin:2px 0 0">{{ p.time }} · {{ p.reason }}</p>
+              </div>
+              <p *ngIf="todayPatients.length === 0" style="font-size:12px;color:#94a3b8;margin:4px 0 0;text-align:center">No appointments today</p>
+              <button (click)="goToPatients(); briefingPopover = null; $event.stopPropagation()"
+                      style="margin-top:10px;width:100%;padding:7px;border-radius:7px;background:#1e3a5f;color:#fff;border:none;font-size:12px;font-weight:600;cursor:pointer;transition:background .12s"
+                      onmouseover="this.style.background='#2d5080'" onmouseout="this.style.background='#1e3a5f'">
+                View All in Patient Files →
+              </button>
+            </div>
+          </div>
+
+          <!-- Labs chip -->
+          <div class="relative flex-1">
+            <button (click)="toggleBriefing('labs'); $event.stopPropagation()"
+                    style="font-size:12px;font-weight:600;background:#fffbeb;border:1px solid #fde68a;color:#b45309;border-radius:7px;padding:5px 0;width:100%;cursor:pointer;transition:opacity .12s"
+                    [style.opacity]="briefingPopover === 'labs' ? '0.75' : '1'">
+              {{ readyLabs.length }} Labs
+            </button>
+            <div *ngIf="briefingPopover === 'labs'"
+                 style="position:absolute;top:calc(100% + 8px);left:50%;transform:translateX(-50%);width:280px;background:#fff;border:1px solid #e2e8f0;border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.12);z-index:500;padding:14px">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+                <span style="font-size:12px;font-weight:700;color:#1e293b">Ready Lab Results</span>
+                <button (click)="briefingPopover = null; $event.stopPropagation()" style="background:none;border:none;cursor:pointer;color:#94a3b8;font-size:18px;line-height:1;padding:0 2px">×</button>
+              </div>
+              <div *ngFor="let l of readyLabs" style="padding:7px 0;border-bottom:1px solid #f1f5f9">
+                <p style="font-size:12px;font-weight:600;color:#1e293b;margin:0">{{ l.patient }}</p>
+                <p style="font-size:11px;color:#94a3b8;margin:2px 0 0">{{ l.id }} · {{ l.work }}</p>
+              </div>
+              <button (click)="goToLabRequests(); briefingPopover = null; $event.stopPropagation()"
+                      style="margin-top:10px;width:100%;padding:7px;border-radius:7px;background:#1e3a5f;color:#fff;border:none;font-size:12px;font-weight:600;cursor:pointer;transition:background .12s"
+                      onmouseover="this.style.background='#2d5080'" onmouseout="this.style.background='#1e3a5f'">
+                View All in Lab Request →
+              </button>
+            </div>
+          </div>
+
+          <!-- Pending chip -->
+          <div class="relative flex-1">
+            <button (click)="toggleBriefing('pending'); $event.stopPropagation()"
+                    style="font-size:12px;font-weight:600;background:#fef2f2;border:1px solid #fecaca;color:#b91c1c;border-radius:7px;padding:5px 0;width:100%;cursor:pointer;transition:opacity .12s"
+                    [style.opacity]="briefingPopover === 'pending' ? '0.75' : '1'">
+              {{ pendingSubmissions.length }} Pending
+            </button>
+            <div *ngIf="briefingPopover === 'pending'"
+                 style="position:absolute;top:calc(100% + 8px);right:0;width:280px;background:#fff;border:1px solid #e2e8f0;border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.12);z-index:500;padding:14px">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+                <span style="font-size:12px;font-weight:700;color:#1e293b">Pending Submissions</span>
+                <button (click)="briefingPopover = null; $event.stopPropagation()" style="background:none;border:none;cursor:pointer;color:#94a3b8;font-size:18px;line-height:1;padding:0 2px">×</button>
+              </div>
+              <div *ngFor="let s of pendingSubmissions" style="padding:7px 0;border-bottom:1px solid #f1f5f9">
+                <p style="font-size:12px;font-weight:600;color:#1e293b;margin:0">{{ s.student }}</p>
+                <p style="font-size:11px;color:#94a3b8;margin:2px 0 0">{{ s.procedure }}</p>
+              </div>
+              <button (click)="goToEvaluations(); briefingPopover = null; $event.stopPropagation()"
+                      style="margin-top:10px;width:100%;padding:7px;border-radius:7px;background:#1e3a5f;color:#fff;border:none;font-size:12px;font-weight:600;cursor:pointer;transition:background .12s"
+                      onmouseover="this.style.background='#2d5080'" onmouseout="this.style.background='#1e3a5f'">
+                View All in Student Evaluation →
+              </button>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- Card 2: Next Patient (always visible) -->
+      <div [style.cursor]="nextPatient ? 'pointer' : 'default'"
+           (click)="nextPatient && goToPatientFile(nextPatient.patientId)"
+           class="bg-white rounded-lg shadow-md border border-gray-100 border-b-4 border-b-yellow-400 p-5 flex flex-col"
+           style="position:relative">
+
+        <!-- Time badge (only when patient exists) -->
+        <span *ngIf="nextPatient"
+              style="position:absolute;top:12px;right:12px;font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;border:1px solid"
+              [style.background]="nextPatientBadge.isNow ? '#ef4444' : '#fef9c3'"
+              [style.color]="nextPatientBadge.isNow ? '#fff' : '#713f12'"
+              [style.border-color]="nextPatientBadge.isNow ? '#ef4444' : '#fde68a'">
+          {{ nextPatientBadge.text }}
+        </span>
+
+        <!-- Icon + title -->
+        <div class="flex items-start gap-3 mb-1">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" class="flex-shrink-0 mt-0.5 text-royal" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
+          </svg>
+          <div>
+            <p style="font-size:14px;font-weight:700" class="text-gray-800 leading-tight">Next Patient</p>
+            <p style="font-size:11.5px" class="text-gray-400 mt-0.5">
+              {{ nextPatient ? 'Tap to open the file before they walk in.' : 'No upcoming appointments for today.' }}
+            </p>
+          </div>
+        </div>
+
+        <hr class="border-gray-100 my-3">
+
+        <!-- Patient info when available -->
+        <ng-container *ngIf="nextPatient; else noPatient">
+          <div style="margin-bottom:10px">
+            <p style="font-size:13px;font-weight:600;color:#1e293b;margin:0 0 3px">{{ nextPatient.patient }}</p>
+            <p style="font-size:12px;color:#94a3b8;margin:0 0 6px">{{ nextPatient.time }} · {{ nextPatient.reason }}</p>
+            <span *ngIf="nextPatient.medicalAlert"
+                  style="display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:600;background:#fee2e2;border:1px solid #fca5a5;color:#991b1b;padding:2px 9px;border-radius:20px">
+              ⚠ {{ nextPatient.medicalAlert }}
+            </span>
+          </div>
+          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">
+            <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:7px;padding:7px 10px;text-align:center">
+              <p style="font-size:13px;font-weight:700;color:#1e3a5f;margin:0">{{ nextPatient.fileNo }}</p>
+              <p style="font-size:11px;color:#94a3b8;margin:1px 0 0">File No.</p>
+            </div>
+            <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:7px;padding:7px 10px;text-align:center">
+              <p style="font-size:13px;font-weight:700;color:#1e3a5f;margin:0">{{ nextPatient.age }}</p>
+              <p style="font-size:11px;color:#94a3b8;margin:1px 0 0">Age</p>
+            </div>
+            <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:7px;padding:7px 10px;text-align:center">
+              <p style="font-size:13px;font-weight:700;color:#1e3a5f;margin:0">{{ nextPatient.gender }}</p>
+              <p style="font-size:11px;color:#94a3b8;margin:1px 0 0">Gender</p>
+            </div>
+          </div>
+        </ng-container>
+
+        <!-- Empty state when no patient -->
+        <ng-template #noPatient>
+          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">
+            <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:7px;padding:7px 10px;text-align:center">
+              <p style="font-size:13px;font-weight:700;color:#cbd5e1;margin:0">—</p>
+              <p style="font-size:11px;color:#94a3b8;margin:1px 0 0">File No.</p>
+            </div>
+            <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:7px;padding:7px 10px;text-align:center">
+              <p style="font-size:13px;font-weight:700;color:#cbd5e1;margin:0">—</p>
+              <p style="font-size:11px;color:#94a3b8;margin:1px 0 0">Age</p>
+            </div>
+            <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:7px;padding:7px 10px;text-align:center">
+              <p style="font-size:13px;font-weight:700;color:#cbd5e1;margin:0">—</p>
+              <p style="font-size:11px;color:#94a3b8;margin:1px 0 0">Gender</p>
+            </div>
+          </div>
+        </ng-template>
+
+      </div>
+
+    </div>
+  </section>
+
+  <!-- Upcoming Appointments -->
+  <section>
+    <div class="flex justify-between items-center mb-4">
+      <h3 class="text-xl font-semibold text-gray-700">Upcoming Appointments</h3>
+      <button
+        (click)="goToAppointments()"
+        class="bg-royal text-white text-sm font-medium py-2 px-4 rounded-lg hover:bg-[#2c5282] transition-colors"
+      >
+        View All Appointments
+      </button>
+    </div>
+    <div class="bg-white rounded-lg shadow-md overflow-x-auto">
+      <table class="min-w-full divide-y divide-gray-200">
+        <thead class="bg-gray-50">
+          <tr>
+            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Time</th>
+            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Patient</th>
+            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">File No.</th>
+            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Reason</th>
+            <th class="relative px-6 py-3"><span class="sr-only">Actions</span></th>
+          </tr>
+        </thead>
+        <tbody class="bg-white divide-y divide-gray-200">
+          <tr *ngFor="let appt of appointments" class="hover:bg-gray-50 transition-colors">
+            <td class="px-6 py-4 whitespace-nowrap">
+              <div class="flex items-center gap-2">
+                <span [class]="'h-2 w-2 rounded-full flex-shrink-0 ' + getDotColor(appt)"></span>
+                <div>
+                  <p class="text-sm font-medium text-gray-900">{{ appt.time }}</p>
+                  <p [class]="'text-xs ' + getRelativeColor(appt)">{{ getRelativeTime(appt) }}</p>
+                </div>
+              </div>
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-800">{{ appt.patient }}</td>
+            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ appt.fileNo }}</td>
+            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ appt.reason }}</td>
+            <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+              <button
+                (click)="goToPatientFile(appt.patientId)"
+                class="bg-royal text-white text-xs font-semibold py-1.5 px-3 rounded-md hover:bg-[#2c5282] transition-colors"
+              >Open File</button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- Tickets Status -->
+  <section class="bg-white p-6 rounded-lg shadow-md">
+    <div class="flex justify-between items-center mb-4">
+      <h3 class="text-xl font-semibold text-gray-700">Tickets Status</h3>
+      <button (click)="goToTickets()" class="text-royal hover:text-gold text-sm font-medium flex items-center">
+        View All <span class="material-symbols-outlined text-base ml-1">arrow_forward</span>
+      </button>
+    </div>
+    <div class="space-y-3">
+      <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-100">
+        <div>
+          <p class="text-sm font-medium text-gray-900">Slow Imaging System</p>
+          <p class="text-xs text-gray-500">#TKT-8821 • 2 hours ago</p>
+        </div>
+        <span class="px-2 py-1 text-[10px] font-bold uppercase rounded bg-blue-100 text-blue-700">In Progress</span>
+      </div>
+      <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-100">
+        <div>
+          <p class="text-sm font-medium text-gray-900">Printer Connectivity</p>
+          <p class="text-xs text-gray-500">#TKT-8815 • 1 day ago</p>
+        </div>
+        <span class="px-2 py-1 text-[10px] font-bold uppercase rounded bg-green-100 text-green-700">Resolved</span>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<!-- Review Note Modal -->
+<div *ngIf="isReviewModalOpen" class="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+  <div class="bg-white rounded-lg shadow-xl w-full max-w-lg">
+    <div class="flex items-center justify-between p-4 border-b">
+      <h3 class="text-xl font-semibold text-royal">Review Student Note</h3>
+      <button (click)="isReviewModalOpen = false" class="text-gray-400 hover:text-gray-600">
+        <span class="material-symbols-outlined text-2xl">close</span>
+      </button>
+    </div>
+    <div class="p-6 space-y-4">
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">Student's Note (Ali Hassan)</label>
+        <div class="p-3 bg-gray-50 rounded-md border h-32 overflow-y-auto text-sm text-gray-600">
+          Patient presented with chief complaint of pain in tooth #36. Examination revealed deep caries. Plan is to proceed with excavation and restoration.
+        </div>
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">Supervisor's Feedback</label>
+        <textarea class="w-full p-2 bg-white text-gray-900 border border-gray-300 rounded-md focus:ring-royal focus:border-royal outline-none" rows="3" placeholder="Add comments..."></textarea>
+      </div>
+    </div>
+    <div class="flex justify-end gap-3 p-4 border-t bg-gray-50 rounded-b-lg">
+      <button class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg text-sm transition-colors">Approve</button>
+      <button class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg text-sm transition-colors">Reject</button>
+    </div>
+  </div>
+</div>

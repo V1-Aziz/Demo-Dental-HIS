@@ -1,0 +1,189 @@
+<div class="flex flex-col md:flex-row gap-6 items-start">
+
+  <!-- Left Panel: Patient List -->
+  <div class="w-full md:w-2/3 bg-white rounded-lg shadow-md overflow-hidden">
+    <div class="flex flex-col md:flex-row items-center p-4 gap-3 border-b">
+      <div class="relative w-full md:flex-1">
+        <span class="absolute inset-y-0 left-0 flex items-center pl-3">
+          <span class="material-symbols-outlined text-xl text-gray-400">search</span>
+        </span>
+        <input type="text" placeholder="Search by Name, File No, or Civil ID..."
+               [(ngModel)]="searchTerm" (input)="onSearchChange()"
+               class="w-full pl-10 pr-4 py-2 bg-white text-gray-900 border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-gold/50 outline-none" />
+      </div>
+      <button (click)="selectedPatient = null; openModal('add')"
+              class="w-full md:flex-1 bg-royal text-white font-bold py-2 px-6 rounded-lg flex items-center justify-center gap-2 hover:bg-[#2c5282] transition-all">
+        Register New Patient
+      </button>
+    </div>
+
+    <!-- List Header -->
+    <div class="bg-gray-50 p-4 border-b grid grid-cols-12 gap-4 text-xs text-gray-500 uppercase tracking-wider font-bold">
+      <div class="col-span-5">Patient Name</div>
+      <div class="col-span-3">File No</div>
+      <div class="col-span-4">Phone Number</div>
+    </div>
+
+    <!-- List Rows -->
+    <div>
+      <div *ngFor="let patient of patients"
+           (click)="selectedPatient = patient"
+           [class]="'p-4 border-b grid grid-cols-12 gap-4 text-sm items-center cursor-pointer transition-colors ' + (selectedPatient?.id === patient.id ? 'bg-blue-50 border-l-4 border-royal' : 'hover:bg-gray-50 border-l-4 border-gray-100')">
+        <div class="col-span-5 font-medium text-gray-900">{{ patient.patientName }}</div>
+        <div class="col-span-3 text-gray-600">{{ patient.fileNo }}</div>
+        <div class="col-span-4 text-gray-600 font-mono">{{ patient.phone }}</div>
+      </div>
+      <div *ngIf="patients.length === 0" class="p-8 text-center text-sm text-gray-400">No patients found.</div>
+    </div>
+
+    <!-- Pagination bar -->
+    <div class="flex items-center justify-between px-4 py-1.5 border-t text-xs text-gray-600">
+      <div class="flex items-center gap-2">
+        <span class="text-gray-500">Rows:</span>
+        <select [ngModel]="pageSize" (ngModelChange)="onPageSizeChange($event)"
+                class="border border-gray-300 rounded px-2 py-1 text-sm bg-white outline-none focus:ring-2 focus:ring-gold/50">
+          <option *ngFor="let s of pageSizeOptions" [value]="s">{{ s }}</option>
+        </select>
+      </div>
+      <div class="flex items-center gap-1">
+        <span class="text-gray-500 text-xs">{{ pageRangeStart }}–{{ pageRangeEnd }} of {{ totalPatients }}</span>
+        <button (click)="goToPage(currentPage - 1)" [disabled]="currentPage <= 1"
+                class="p-1 rounded hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed">
+          <span class="material-symbols-outlined text-base leading-none">chevron_left</span>
+        </button>
+        <span class="font-medium text-xs">{{ currentPage }} / {{ totalPages }}</span>
+        <button (click)="goToPage(currentPage + 1)" [disabled]="currentPage >= totalPages"
+                class="p-1 rounded hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed">
+          <span class="material-symbols-outlined text-base leading-none">chevron_right</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Right Panel: Patient Detail -->
+  <div class="w-full md:w-1/3 bg-white p-6 rounded-lg shadow-md">
+    <h2 class="text-lg font-bold text-royal mb-4 border-b pb-2">Selected Patient View</h2>
+
+    <div *ngIf="selectedPatient; else emptyState" class="space-y-6">
+      <div>
+        <h3 class="text-xl font-bold text-royal">{{ selectedPatient.patientName }}</h3>
+        <p class="text-xs text-gray-500 font-mono mb-4">File No: {{ selectedPatient.fileNo }}</p>
+        <div class="grid grid-cols-2 gap-4 text-sm">
+          <div>
+            <label class="block text-xs font-bold text-gray-500 uppercase">Civil ID</label>
+            <p class="text-gray-800 font-medium">{{ selectedPatient.civilID }}</p>
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-gray-500 uppercase">Gender</label>
+            <p class="text-gray-800 font-medium">{{ selectedPatient.gender }}</p>
+          </div>
+          <div class="col-span-2">
+            <label class="block text-xs font-bold text-gray-500 uppercase">Phone Number</label>
+            <p class="text-gray-800 font-medium">{{ selectedPatient.phone }}</p>
+          </div>
+        </div>
+      </div>
+      <div class="pt-4 border-t">
+        <button (click)="openModal('edit')"
+                class="w-full bg-royal text-white py-2 px-4 rounded-lg font-bold hover:bg-[#2c5282] transition-colors">
+          Edit Patient Info
+        </button>
+      </div>
+    </div>
+
+    <ng-template #emptyState>
+      <div class="py-8 text-center text-gray-400">
+        <p>Select a patient to see details</p>
+      </div>
+    </ng-template>
+  </div>
+
+</div>
+
+<!-- Register / Edit Modal -->
+<div *ngIf="isModalOpen" class="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+  <div class="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+    <div class="flex items-center justify-between p-4 border-b sticky top-0 bg-white z-10">
+      <h3 class="text-xl font-bold text-royal">{{ modalTitle }}</h3>
+      <button (click)="isModalOpen = false" class="text-gray-400 hover:text-gray-600">
+        <span class="material-symbols-outlined text-2xl">close</span>
+      </button>
+    </div>
+    <form class="p-6 space-y-4" (ngSubmit)="savePatient()">
+
+      <p *ngIf="saveError" class="text-sm text-red-600 bg-red-50 border border-red-200 rounded-md px-3 py-2">
+        {{ saveError }}
+      </p>
+
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div>
+          <label class="block text-sm font-medium text-gray-700">First Name <span *ngIf="modalMode === 'add'" class="text-red-500">*</span></label>
+          <input type="text" [(ngModel)]="form.firstName" name="firstName"
+                 [readonly]="modalMode === 'edit'"
+                 [class]="'mt-1 w-full text-gray-900 border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none ' + (modalMode === 'edit' ? 'bg-gray-100 cursor-not-allowed text-gray-500' : 'bg-white focus:ring-royal focus:border-royal')" />
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700">Middle Name</label>
+          <input type="text" [(ngModel)]="form.middleName" name="middleName"
+                 [readonly]="modalMode === 'edit'"
+                 [class]="'mt-1 w-full text-gray-900 border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none ' + (modalMode === 'edit' ? 'bg-gray-100 cursor-not-allowed text-gray-500' : 'bg-white focus:ring-royal focus:border-royal')" />
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700">Last Name <span *ngIf="modalMode === 'add'" class="text-red-500">*</span></label>
+          <input type="text" [(ngModel)]="form.lastName" name="lastName"
+                 [readonly]="modalMode === 'edit'"
+                 [class]="'mt-1 w-full text-gray-900 border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none ' + (modalMode === 'edit' ? 'bg-gray-100 cursor-not-allowed text-gray-500' : 'bg-white focus:ring-royal focus:border-royal')" />
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+          <label class="block text-sm font-medium text-gray-700">File Number <span *ngIf="modalMode === 'add'" class="text-red-500">*</span></label>
+          <input type="text" [(ngModel)]="form.fileNumber" name="fileNumber"
+                 [readonly]="modalMode === 'edit'"
+                 [class]="'mt-1 w-full text-gray-900 border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none ' + (modalMode === 'edit' ? 'bg-gray-100 cursor-not-allowed text-gray-500' : 'bg-white focus:ring-royal focus:border-royal')" />
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700">National ID (Civil ID) <span *ngIf="modalMode === 'add'" class="text-red-500">*</span></label>
+          <input type="text" [(ngModel)]="form.nationalId" name="nationalId"
+                 [readonly]="modalMode === 'edit'"
+                 [class]="'mt-1 w-full text-gray-900 border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none ' + (modalMode === 'edit' ? 'bg-gray-100 cursor-not-allowed text-gray-500' : 'bg-white focus:ring-royal focus:border-royal')" />
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700">Date of Birth <span *ngIf="modalMode === 'add'" class="text-red-500">*</span></label>
+          <input type="date" [(ngModel)]="form.dateOfBirth" name="dateOfBirth"
+                 [readonly]="modalMode === 'edit'"
+                 [class]="'mt-1 w-full text-gray-900 border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none ' + (modalMode === 'edit' ? 'bg-gray-100 cursor-not-allowed text-gray-500' : 'bg-white focus:ring-royal focus:border-royal')" />
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700">Gender <span *ngIf="modalMode === 'add'" class="text-red-500">*</span></label>
+          <select [(ngModel)]="form.gender" name="gender"
+                  [disabled]="modalMode === 'edit'"
+                  [class]="'mt-1 w-full text-gray-900 border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none ' + (modalMode === 'edit' ? 'bg-gray-100 cursor-not-allowed text-gray-500' : 'bg-white focus:ring-royal focus:border-royal')">
+            <option value="Male">Male</option>
+            <option value="Female">Female</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700">Phone Number</label>
+          <input type="tel" [(ngModel)]="form.phoneNumber" name="phoneNumber"
+                 class="mt-1 w-full bg-white text-gray-900 border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-royal focus:border-royal" />
+        </div>
+        <div *ngIf="modalMode === 'add'">
+          <label class="block text-sm font-medium text-gray-700">Email</label>
+          <input type="email" [(ngModel)]="form.email" name="email"
+                 class="mt-1 w-full bg-white text-gray-900 border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-royal focus:border-royal" />
+        </div>
+      </div>
+
+      <div class="flex justify-end gap-3 pt-4 border-t">
+        <button type="button" (click)="isModalOpen = false"
+                class="bg-gray-100 text-gray-700 py-2 px-6 rounded-lg font-bold hover:bg-gray-200">Cancel</button>
+        <button type="submit" [disabled]="isSaving"
+                class="bg-royal text-white py-2 px-6 rounded-lg font-bold hover:bg-[#2c5282] disabled:opacity-50">
+          {{ isSaving ? 'Saving...' : (modalMode === 'edit' ? 'Update Phone' : 'Save Patient') }}
+        </button>
+      </div>
+    </form>
+  </div>
+</div>

@@ -1,0 +1,203 @@
+<div *ngIf="loading" class="flex items-center justify-center h-48 text-gray-400">
+  <span class="material-symbols-outlined animate-spin text-3xl mr-2">progress_activity</span>
+  Loading patient…
+</div>
+
+<ng-container *ngIf="!loading && patient">
+
+  <!-- Back button -->
+  <button (click)="goBack()" class="flex items-center gap-1 text-sm text-gray-500 hover:text-royal mb-4 transition-colors">
+    <span class="material-symbols-outlined text-base">arrow_back</span>
+    Back to patient list
+  </button>
+
+  <!-- Patient header card — NO date of birth -->
+  <div class="bg-white rounded-xl shadow-sm p-5 mb-5 flex flex-wrap items-center gap-6">
+    <div class="w-14 h-14 rounded-full bg-royal flex items-center justify-center text-white text-2xl font-bold">
+      {{ patient.first_name.charAt(0) }}
+    </div>
+    <div class="flex-1 min-w-0">
+      <h2 class="text-xl font-bold text-gray-800">{{ patient.first_name }} {{ patient.last_name }}</h2>
+      <div class="flex flex-wrap gap-3 mt-1 text-sm text-gray-500">
+        <span class="flex items-center gap-1">
+          <span class="material-symbols-outlined text-base">person</span> {{ patient.gender }}
+        </span>
+        <span class="flex items-center gap-1">
+          <span class="material-symbols-outlined text-base">cake</span> {{ patient.age }} years old
+        </span>
+        <span *ngIf="patient.file_number" class="flex items-center gap-1">
+          <span class="material-symbols-outlined text-base">tag</span> File #{{ patient.file_number }}
+        </span>
+      </div>
+    </div>
+    <button
+      *ngIf="canUpload"
+      (click)="openUploadModal()"
+      class="flex items-center gap-2 px-5 py-2.5 bg-royal text-gold rounded-lg font-semibold text-sm hover:bg-[#1a3a5c] transition-colors"
+    >
+      <span class="material-symbols-outlined text-base">upload</span>
+      Upload patient screening
+    </button>
+  </div>
+
+  <!-- Today's appointments -->
+  <div *ngIf="todaysAppointments.length > 0" class="bg-white rounded-xl shadow-sm mb-5 overflow-hidden">
+    <div class="px-5 py-3 border-b border-gray-100 font-semibold text-sm text-gray-700">
+      Today's Appointments
+    </div>
+    <div class="divide-y divide-gray-50">
+      <div *ngFor="let appt of todaysAppointments" class="px-5 py-3 flex items-center gap-4 text-sm">
+        <span class="material-symbols-outlined text-gray-400">schedule</span>
+        <span class="font-medium text-gray-700">{{ appt.appointment_time }}</span>
+        <span class="text-gray-500">{{ appt.doctor_name }}</span>
+        <span class="text-gray-400">·</span>
+        <span class="text-gray-500">{{ appt.clinic_name }}</span>
+        <span class="ml-auto px-2 py-0.5 rounded-full text-xs font-medium"
+              [ngClass]="appt.status === 'Completed' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'">
+          {{ appt.status }}
+        </span>
+      </div>
+    </div>
+  </div>
+
+  <div *ngIf="todaysAppointments.length === 0" class="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-5 text-sm text-amber-700 flex items-center gap-2">
+    <span class="material-symbols-outlined text-base">warning</span>
+    No same-day appointments found — upload is disabled.
+  </div>
+
+  <!-- Screenings gallery -->
+  <div class="bg-white rounded-xl shadow-sm p-5">
+    <h3 class="font-semibold text-gray-800 mb-4">Screening Images</h3>
+
+    <div *ngIf="screenings.length === 0" class="flex flex-col items-center justify-center py-10 text-gray-400 gap-2">
+      <span class="material-symbols-outlined text-4xl">scan</span>
+      <p class="text-sm">No screenings uploaded yet.</p>
+    </div>
+
+    <div *ngIf="screenings.length > 0" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+      <div *ngFor="let s of screenings" class="rounded-lg overflow-hidden border border-gray-100 bg-gray-50">
+        <div class="aspect-square bg-gray-100 flex items-center justify-center overflow-hidden">
+          <img *ngIf="s.thumb_url" [src]="s.thumb_url" [alt]="s.image_type" class="w-full h-full object-cover" />
+          <span *ngIf="!s.thumb_url" class="material-symbols-outlined text-3xl text-gray-300">image</span>
+        </div>
+        <div class="p-2">
+          <span class="text-xs px-1.5 py-0.5 rounded font-medium" [ngClass]="typeBadgeClass(s.image_type)">{{ s.image_type }}</span>
+          <p class="text-xs text-gray-400 mt-1">{{ s.uploaded_at | date:'short' }}</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</ng-container>
+
+<!-- ─── Upload Modal ─────────────────────────────────────────────────────── -->
+<div *ngIf="showUploadModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+  <div class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden">
+
+    <!-- Modal header -->
+    <div class="px-6 py-4 border-b border-gray-100 flex-shrink-0">
+      <div class="flex items-start justify-between">
+        <div>
+          <h2 class="text-lg font-bold text-gray-800">Upload Screening</h2>
+          <p *ngIf="selectedAppointment" class="text-sm text-gray-500 mt-0.5">
+            {{ selectedAppointment.appointment_time }} · {{ selectedAppointment.doctor_name }} · {{ selectedAppointment.clinic_name }}
+          </p>
+        </div>
+        <button (click)="closeUploadModal()" class="text-gray-400 hover:text-gray-600 ml-4">
+          <span class="material-symbols-outlined text-xl">close</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Modal body -->
+    <div class="overflow-y-auto flex-1 px-6 py-4 space-y-4">
+
+      <!-- Appointment picker (when multiple today) -->
+      <div *ngIf="todaysAppointments.length > 1">
+        <label class="block text-xs font-semibold text-gray-600 mb-1">Attach to appointment</label>
+        <select [(ngModel)]="selectedApptId"
+                class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-royal/30">
+          <option *ngFor="let a of todaysAppointments" [ngValue]="a.appointment_id">
+            {{ a.appointment_time }} — {{ a.doctor_name }} ({{ a.status }})
+          </option>
+        </select>
+      </div>
+
+      <!-- Drop zone -->
+      <div
+        class="border-2 border-dashed border-gray-300 rounded-xl p-6 text-center cursor-pointer hover:border-royal transition-colors"
+        (click)="fileInput.click()"
+        (drop)="onDrop($event)"
+        (dragover)="onDragOver($event)"
+      >
+        <span class="material-symbols-outlined text-3xl text-gray-300 mb-2 block">upload_file</span>
+        <p class="text-sm text-gray-500">Drag &amp; drop or <span class="text-royal font-medium">choose files</span></p>
+        <p class="text-xs text-gray-400 mt-1">JPEG / PNG · max 10 MB · up to 10 images</p>
+        <input #fileInput type="file" multiple accept="image/jpeg,image/png" class="hidden" (change)="onFilesSelected($event)" />
+      </div>
+
+      <!-- File rows -->
+      <div *ngFor="let row of uploadFiles; let i = index" class="border border-gray-100 rounded-xl p-3 flex gap-3 items-start">
+        <img [src]="row.previewUrl" class="w-16 h-16 object-cover rounded-lg border border-gray-100 flex-shrink-0" />
+        <div class="flex-1 min-w-0 space-y-2">
+          <div class="flex items-center justify-between">
+            <p class="text-xs font-medium text-gray-700 truncate">{{ row.file.name }}</p>
+            <button (click)="removeFile(i)" class="text-gray-300 hover:text-red-400 ml-2">
+              <span class="material-symbols-outlined text-base">close</span>
+            </button>
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-gray-600 mb-0.5">Image type <span class="text-red-500">*</span></label>
+            <select [(ngModel)]="row.imageType"
+                    [ngClass]="{'border-red-300': !row.imageType}"
+                    class="w-full border border-gray-200 rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-royal/30">
+              <option value="">Select type…</option>
+              <option *ngFor="let t of IMAGE_TYPES" [value]="t">{{ t }}</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-gray-600 mb-0.5">Notes (optional)</label>
+            <textarea [(ngModel)]="row.notes" maxlength="500" rows="2"
+                      class="w-full border border-gray-200 rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-royal/30 resize-none"
+                      placeholder="Optional notes…"></textarea>
+          </div>
+        </div>
+      </div>
+
+      <!-- Global upload error -->
+      <div *ngIf="uploadError" class="bg-red-50 border border-red-200 text-red-700 text-xs rounded-lg p-3">
+        {{ uploadError }}
+      </div>
+    </div>
+
+    <!-- Modal footer -->
+    <div class="px-6 py-4 border-t border-gray-100 flex-shrink-0">
+      <p *ngIf="selectedAppointment" class="text-xs text-gray-400 mb-3">
+        <span class="material-symbols-outlined text-base align-middle">info</span>
+        {{ selectedAppointment.doctor_name }} &amp; assigned student will be notified on upload.
+      </p>
+      <div class="flex justify-end gap-3">
+        <button (click)="closeUploadModal()" class="px-4 py-2 rounded-lg border border-gray-200 text-sm text-gray-600 hover:bg-gray-50 transition-colors">
+          Cancel
+        </button>
+        <button
+          [disabled]="!canSubmit"
+          (click)="submitUpload()"
+          class="px-5 py-2 rounded-lg text-sm font-semibold transition-colors"
+          [ngClass]="canSubmit ? 'bg-royal text-gold hover:bg-[#1a3a5c]' : 'bg-gray-100 text-gray-400 cursor-not-allowed'"
+        >
+          <span *ngIf="uploading" class="material-symbols-outlined animate-spin text-base align-middle mr-1">progress_activity</span>
+          {{ uploading ? 'Uploading…' : 'Upload' }}
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div *ngIf="toast"
+     class="fixed bottom-5 right-5 z-50 px-5 py-3 rounded-xl shadow-lg text-sm font-medium flex items-center gap-2"
+     [ngClass]="toast.kind === 'error' ? 'bg-red-600 text-white' : 'bg-green-600 text-white'">
+  <span class="material-symbols-outlined text-base">{{ toast.kind === 'error' ? 'error' : 'check_circle' }}</span>
+  {{ toast.text }}
+</div>
